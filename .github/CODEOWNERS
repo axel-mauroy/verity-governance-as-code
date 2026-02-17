@@ -1,0 +1,34 @@
+# ============================================
+# Verity — CODEOWNERS
+# ============================================
+# Chaque PR modifiant ces chemins requiert
+# l'approbation des owners listés.
+# Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# --- Global fallback (toute modification) ---
+* @axel-mauroy
+
+# --- Core Engine (Hexagonal Architecture) ---
+/verity-core/src/ports/                  @axel-mauroy
+/verity-core/src/domain/                 @axel-mauroy
+/verity-core/src/application/            @axel-mauroy
+
+# --- Governance Engine (Critical — PII, Security, Compliance) ---
+/verity-core/src/domain/governance/      @axel-mauroy
+/verity-core/src/domain/compliance/      @axel-mauroy
+
+# --- Infrastructure Adapters (DuckDB, DataFusion) ---
+/verity-core/src/infrastructure/adapters/ @axel-mauroy
+
+# --- CLI ---
+/verity/src/                             @axel-mauroy
+
+# --- CI/CD & Security ---
+/.github/                                @axel-mauroy
+
+# --- Configuration & Project Schema ---
+/verity-core/src/infrastructure/config/  @axel-mauroy
+
+# --- Examples & Documentation ---
+/examples/                               @axel-mauroy
+/docs/                                   @axel-mauroy
