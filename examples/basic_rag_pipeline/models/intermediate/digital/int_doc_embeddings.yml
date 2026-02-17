@@ -1,4 +1,3 @@
-version: '2'
 schema:
 - model_name: int_doc_embeddings
   description: Version 1 of int_doc_embeddings

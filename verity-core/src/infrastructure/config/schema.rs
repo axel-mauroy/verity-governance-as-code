@@ -74,6 +74,10 @@ pub struct ModelSchema {
     pub columns: Option<Vec<ColumnSchema>>,
 }
 
+fn default_version() -> u32 {
+    1
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone, Default)]
 pub struct ModelConfig {
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -87,7 +91,8 @@ pub struct ModelConfig {
     pub data_catalog: bool, // distinguish between “plumbing” tables and “data products” tables.
 
     // --- Versioning & Lifecycle ---
-    // [STRICT] Mandatory Versioning
+    // Mandatory Versioning (default = 1 for legacy support)
+    #[serde(default = "default_version")]
     pub version: u32,
 
     #[serde(default)]

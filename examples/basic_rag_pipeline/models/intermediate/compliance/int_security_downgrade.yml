@@ -1,4 +1,3 @@
-version: '2'
 schema:
 - model_name: int_security_downgrade
   description: Version 1 of int_security_downgrade

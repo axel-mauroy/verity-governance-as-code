@@ -2,7 +2,7 @@ schema:
 - model_name: stg_embeddings
   description: Vector embeddings for semantic search
   config:
-    version: null
+    version: 1
     status: provisioning
     latest: false
   compliance:

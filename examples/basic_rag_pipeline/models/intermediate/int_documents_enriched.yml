@@ -2,7 +2,7 @@ schema:
 - model_name: int_documents_enriched
   description: Intermediate model joining documents and embeddings with PII detection
   config:
-    version: null
+    version: 1
     status: provisioning
     latest: false
   columns:

@@ -1,4 +1,3 @@
-version: '2'
 schema:
 - model_name: int_active_customers
   description: Version 1 of int_active_customers

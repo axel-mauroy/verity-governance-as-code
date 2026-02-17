@@ -27,17 +27,18 @@ jobs:
       - uses: actions/checkout@v4
       - name: Cache Rust dependencies
         uses: swatinem/rust-cache@v2
-
+      - name: Install cargo-audit
+        run: cargo install cargo-audit
+      - name: Run security audit
+        run: cargo audit
       - name: Gitleaks Scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      
       - name: Zero-Panic Guard
         run: |
           chmod +x .github/hooks/deny_unsecure.sh
           ./.github/hooks/deny_unsecure.sh
-
       - name: Cargo Deny
         uses: EmbarkStudios/cargo-deny-action@v1
         with:
@@ -64,3 +65,35 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
       - run: cargo test --workspace
+
+    name: Run Coverage
+    run: |
+      cargo install cargo-tarpaulin
+      cargo tarpaulin --out Xml --verbose
+
+  e2e:
+    name: 🚀 E2E Examples
+    runs-on: ubuntu-latest
+    needs: [test]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+
+      - name: Build CLI (Release)
+        run: cargo build --release --bin verity
+
+      - name: E2E - Basic RAG Pipeline (DuckDB)
+        working-directory: examples/basic_rag_pipeline
+        run: ../../target/release/verity run
+
+      - name: E2E - ML Pipeline (DataFusion)
+        working-directory: examples/ml_pipeline
+        run: ../../target/release/verity run
+
+  bench:
+    name: ⚡ Performance Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cargo bench

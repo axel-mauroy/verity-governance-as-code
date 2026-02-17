@@ -1,4 +1,3 @@
-version: '2'
 schema:
 - model_name: int_customer_sales
   description: Version 1 of int_customer_sales
