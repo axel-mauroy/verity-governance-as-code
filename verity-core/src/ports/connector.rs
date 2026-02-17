@@ -39,4 +39,20 @@ pub trait Connector: Send + Sync {
 
     /// Return the engine name (for logging purposes).
     fn engine_name(&self) -> &str;
+
+    /// Whether this engine handles governance at the plan level (e.g. DataFusion optimizer rules).
+    /// When true, the pipeline skips the SQL-string-based PolicyRewriter
+    /// and relies on the engine's built-in governance rules instead.
+    fn supports_plan_governance(&self) -> bool {
+        false
+    }
+
+    /// Register governance masking policies at the engine level.
+    /// Default is no-op (engines like DuckDB use string-based PolicyRewriter instead).
+    async fn register_governance(
+        &self,
+        _policies: crate::domain::governance::GovernancePolicySet,
+    ) {
+        // No-op by default
+    }
 }

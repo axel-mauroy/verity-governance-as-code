@@ -7,7 +7,9 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 
 // Hexagonal Imports
+use crate::domain::governance::governance_rule::GovernancePolicySet;
 use crate::error::VerityError;
+use crate::infrastructure::adapters::governance_optimizer::GovernanceRule;
 use crate::infrastructure::error::{DatabaseError, InfrastructureError};
 use crate::ports::connector::{ColumnSchema, Connector};
 
@@ -23,6 +25,18 @@ impl DataFusionConnector {
             ctx: Arc::new(Mutex::new(ctx)),
             target_dir: target_dir.to_path_buf(),
         })
+    }
+
+    /// Register governance masking rules as a DataFusion optimizer rule.
+    /// Once registered, every SQL query through this session will have
+    /// matching columns automatically rewritten at the logical plan level.
+    pub async fn register_governance_rules(&self, policy_set: GovernancePolicySet) {
+        if policy_set.is_empty() {
+            return;
+        }
+        let ctx = self.ctx.lock().await;
+        ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(policy_set)));
+        println!("    🛡️  Governance rules registered at plan level (DataFusion optimizer)");
     }
 }
 
@@ -187,6 +201,17 @@ impl Connector for DataFusionConnector {
 
     fn engine_name(&self) -> &str {
         "datafusion"
+    }
+
+    fn supports_plan_governance(&self) -> bool {
+        true
+    }
+
+    async fn register_governance(
+        &self,
+        policies: crate::domain::governance::GovernancePolicySet,
+    ) {
+        self.register_governance_rules(policies).await;
     }
 }
 

@@ -1,6 +1,7 @@
 // verity-core/src/domain/governance/mod.rs
 
 pub mod guard;
+pub mod governance_rule;
 pub mod pii;
 pub mod quality;
 pub mod rewriter;
@@ -17,6 +18,7 @@ pub use quality::{QualityConfig, QualityRule};
 pub use rewriter::PolicyRewriter;
 pub use scanner::PiiScanner;
 pub use security_level::SecurityLevel;
+pub use governance_rule::GovernancePolicySet;
 
 // Structure ResourceGovernance
 use serde::{Deserialize, Serialize};

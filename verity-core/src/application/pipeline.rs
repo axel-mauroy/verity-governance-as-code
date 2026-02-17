@@ -102,6 +102,26 @@ where
         }
     }
 
+    // 3.5 REGISTER GOVERNANCE RULES (for engines that support plan-level governance)
+    if connector.supports_plan_governance() {
+        use crate::domain::governance::governance_rule::GovernancePolicySet;
+
+        // Build a unified policy set from all manifest nodes
+        let mut all_policies = Vec::new();
+        for node in manifest.nodes.values() {
+            for col in &node.columns {
+                if let Some(policy) = &col.policy {
+                    all_policies.push((col.name.clone(), policy.clone()));
+                }
+            }
+        }
+
+        let policy_set = GovernancePolicySet::from_pairs(all_policies);
+        if !policy_set.is_empty() {
+            connector.register_governance(policy_set).await;
+        }
+    }
+
     // 4. DAG SCHEDULING (Domain Pure Logic -> Layers)
     println!("🧠 Calculating Execution DAG...");
     let execution_layers = GraphSolver::plan_execution(&manifest)?;
@@ -300,9 +320,13 @@ where
     )?;
 
     // B. Application de la Gouvernance (Masking)
-    // strict_mode is passed as argument, we don't need to recalculate it.
-
-    let secured_sql = PolicyRewriter::apply_masking(&compiled_sql, node)?;
+    // If the engine supports plan-level governance (e.g. DataFusion optimizer rules),
+    // skip the SQL string rewriter — masking is handled at the AST level.
+    let secured_sql = if ctx.connector.supports_plan_governance() {
+        compiled_sql.clone()
+    } else {
+        PolicyRewriter::apply_masking(&compiled_sql, node)?
+    };
 
     // LOG: Run
     let run_path = ctx.target_dir.join("run").join(layer);
