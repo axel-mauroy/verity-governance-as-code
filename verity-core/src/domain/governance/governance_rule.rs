@@ -76,41 +76,38 @@ impl FromStr for MaskingPolicy {
     }
 }
 
-    #[cfg(test)]
-    mod tests {
-        use super::*;
-        use std::str::FromStr;
-    
-        #[test]
-        fn test_masking_policy_from_str() {
-            assert_eq!(MaskingPolicy::from_str("hash"), Ok(MaskingPolicy::Hash));
-            assert_eq!(
-                MaskingPolicy::from_str("redact"),
-                Ok(MaskingPolicy::Redact)
-            );
-            assert_eq!(
-                MaskingPolicy::from_str("mask_email"),
-                Ok(MaskingPolicy::MaskEmail)
-            );
-            assert_eq!(
-                MaskingPolicy::from_str("pii_masking"),
-                Ok(MaskingPolicy::PiiMasking)
-            );
-            assert_eq!(MaskingPolicy::from_str("unknown"), Err(()));
-        }
-    
-        #[test]
-        fn test_policy_set_from_pairs() {
-            let pairs = vec![
-                ("email".to_string(), "hash".to_string()),
-                ("ssn".to_string(), "redact".to_string()),
-                ("unknown_col".to_string(), "nonexistent".to_string()),
-            ];
-            let set = GovernancePolicySet::from_pairs(pairs);
-            assert_eq!(set.column_policies.len(), 2);
-            assert_eq!(set.column_policies.get("email"), Some(&MaskingPolicy::Hash));
-            assert_eq!(set.column_policies.get("ssn"), Some(&MaskingPolicy::Redact));
-        }
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_masking_policy_from_str() {
+        assert_eq!(MaskingPolicy::from_str("hash"), Ok(MaskingPolicy::Hash));
+        assert_eq!(MaskingPolicy::from_str("redact"), Ok(MaskingPolicy::Redact));
+        assert_eq!(
+            MaskingPolicy::from_str("mask_email"),
+            Ok(MaskingPolicy::MaskEmail)
+        );
+        assert_eq!(
+            MaskingPolicy::from_str("pii_masking"),
+            Ok(MaskingPolicy::PiiMasking)
+        );
+        assert_eq!(MaskingPolicy::from_str("unknown"), Err(()));
+    }
+
+    #[test]
+    fn test_policy_set_from_pairs() {
+        let pairs = vec![
+            ("email".to_string(), "hash".to_string()),
+            ("ssn".to_string(), "redact".to_string()),
+            ("unknown_col".to_string(), "nonexistent".to_string()),
+        ];
+        let set = GovernancePolicySet::from_pairs(pairs);
+        assert_eq!(set.column_policies.len(), 2);
+        assert_eq!(set.column_policies.get("email"), Some(&MaskingPolicy::Hash));
+        assert_eq!(set.column_policies.get("ssn"), Some(&MaskingPolicy::Redact));
+    }
 
     #[test]
     fn test_policy_set_empty() {
