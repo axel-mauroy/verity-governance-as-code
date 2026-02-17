@@ -151,7 +151,12 @@ mod tests {
         async fn register_source(&self, _name: &str, _path: &str) -> Result<(), VerityError> {
             Ok(())
         }
-        async fn materialize(&self, _table_name: &str, _sql: &str, materialization_type: &str) -> Result<String, VerityError> {
+        async fn materialize(
+            &self,
+            _table_name: &str,
+            _sql: &str,
+            materialization_type: &str,
+        ) -> Result<String, VerityError> {
             Ok(materialization_type.to_string())
         }
         async fn query_scalar(&self, _query: &str) -> Result<u64, VerityError> {

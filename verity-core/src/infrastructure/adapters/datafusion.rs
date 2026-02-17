@@ -112,9 +112,9 @@ impl Connector for DataFusionConnector {
                 let parquet_path = parquet_dir.join(format!("{}.parquet", table_name));
 
                 df.write_parquet(
-                    parquet_path.to_str().ok_or_else(|| {
-                        VerityError::InternalError("Invalid parquet path".into())
-                    })?,
+                    parquet_path
+                        .to_str()
+                        .ok_or_else(|| VerityError::InternalError("Invalid parquet path".into()))?,
                     datafusion::dataframe::DataFrameWriteOptions::new(),
                     None,
                 )
@@ -128,9 +128,9 @@ impl Connector for DataFusionConnector {
                 // Re-register the Parquet file as a table for downstream queries
                 ctx.register_parquet(
                     table_name,
-                    parquet_path.to_str().ok_or_else(|| {
-                        VerityError::InternalError("Invalid parquet path".into())
-                    })?,
+                    parquet_path
+                        .to_str()
+                        .ok_or_else(|| VerityError::InternalError("Invalid parquet path".into()))?,
                     ParquetReadOptions::default(),
                 )
                 .await

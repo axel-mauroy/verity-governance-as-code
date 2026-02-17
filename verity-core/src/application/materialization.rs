@@ -47,16 +47,25 @@ impl Materializer {
         let final_sql = if is_protected {
             // Protected mode: use IF NOT EXISTS semantics
             match mat_type {
-                "table" => format!("CREATE TABLE IF NOT EXISTS {} AS {}", model_name, executed_sql),
-                "view" => format!("CREATE VIEW IF NOT EXISTS {} AS {}", model_name, executed_sql),
+                "table" => format!(
+                    "CREATE TABLE IF NOT EXISTS {} AS {}",
+                    model_name, executed_sql
+                ),
+                "view" => format!(
+                    "CREATE VIEW IF NOT EXISTS {} AS {}",
+                    model_name, executed_sql
+                ),
                 _ => unreachable!(),
             }
         } else {
             // Standard: delegate fully to the connector
-            return connector.materialize(model_name, executed_sql, mat_type).await
+            return connector
+                .materialize(model_name, executed_sql, mat_type)
+                .await
                 .map_err(|e| {
                     VerityError::InternalError(format!(
-                        "Model '{}' failed.\n    🛑 DB Error: {}", model_name, e
+                        "Model '{}' failed.\n    🛑 DB Error: {}",
+                        model_name, e
                     ))
                 });
         };
@@ -110,7 +119,12 @@ mod tests {
         async fn register_source(&self, _name: &str, _path: &str) -> Result<(), VerityError> {
             Ok(())
         }
-        async fn materialize(&self, _table_name: &str, _sql: &str, materialization_type: &str) -> Result<String, VerityError> {
+        async fn materialize(
+            &self,
+            _table_name: &str,
+            _sql: &str,
+            materialization_type: &str,
+        ) -> Result<String, VerityError> {
             Ok(materialization_type.to_string())
         }
         async fn query_scalar(&self, _query: &str) -> Result<u64, VerityError> {
