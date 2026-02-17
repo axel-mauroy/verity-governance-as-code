@@ -66,10 +66,10 @@ jobs:
       - uses: swatinem/rust-cache@v2
       - run: cargo test --workspace
 
-    name: Run Coverage
-    run: |
-      cargo install cargo-tarpaulin
-      cargo tarpaulin --out Xml --verbose
+      - name: Run Coverage
+        run: |
+          cargo install cargo-tarpaulin
+          cargo tarpaulin --out Xml --verbose
 
   e2e:
     name: 🚀 E2E Examples
