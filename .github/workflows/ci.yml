@@ -2,74 +2,65 @@ name: Verity CI
 
 on:
   push:
-    branches: [ "develop", "uat", "master" ]
+    branches: [ "develop", "uat", "main" ]
   pull_request:
-    branches: [ "develop", "uat", "master" ]
+    branches: [ "develop", "uat", "main" ]
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  # 1. Security Audit (Dependencies + Secrets + Zero-Panic)
-  security_audit:
-    name: 🛡️ Security Audit
+  fmt:
+    name: 🎨 Rustfmt
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          fetch-depth: 0  # Needed for Gitleaks full history scan
+          components: rustfmt
+      - run: cargo fmt --all -- --check
 
-      # --- Cargo Audit (CVE in dependencies) ---
-      - name: Cache cargo-audit binary
-        id: cache-cargo-audit
-        uses: actions/cache@v3
-        with:
-          path: ~/.cargo/bin/cargo-audit
-          key: ${{ runner.os }}-cargo-audit-0.18
+  security:
+    name: 🛡️ Security & License
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
 
-      - name: Install cargo-audit
-        if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
-        run: cargo install cargo-audit
-
-      - name: Run Cargo Audit
-        run: cargo audit
-
-      # --- Gitleaks (Secret detection) ---
       - name: Gitleaks Scan
         uses: gitleaks/gitleaks-action@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      # --- Zero-Panic Guard (No .unwrap()/.expect()/panic! in prod) ---
+      
       - name: Zero-Panic Guard
         run: |
           chmod +x .github/hooks/deny_unsecure.sh
           ./.github/hooks/deny_unsecure.sh
 
-  # 2. Build & Test
-  build_and_test:
-    name: 🔨 Build & Test
+      - name: Cargo Deny
+        uses: EmbarkStudios/cargo-deny-action@v1
+        with:
+          command: check
+
+  clippy:
+    name: 📎 Clippy
     runs-on: ubuntu-latest
+    needs: [fmt]
     steps:
       - uses: actions/checkout@v4
-
-      - name: Install Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
         with:
-          components: clippy, rustfmt
+          components: clippy
+      - uses: swatinem/rust-cache@v2
+      - run: cargo clippy --workspace -- -D warnings
 
-      # Smart Caching (captures target/ and ~/.cargo)
-      - name: Cache Rust dependencies
-        uses: swatinem/rust-cache@v2
-
-      # 1. Formatting (Fastest fail)
-      - name: Check Formatting
-        run: cargo fmt --all -- --check
-
-      # 2. Clippy (Compiles dependencies & creates artifacts)
-      - name: Run Clippy
-        run: cargo clippy --workspace -- -D warnings
-
-      # 3. Tests (Reuses artifacts from Clippy step)
-      - name: Run Tests
-        run: cargo test --workspace
+  test:
+    name: 🧪 Unit & Integration Tests
+    runs-on: ubuntu-latest
+    needs: [clippy]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: swatinem/rust-cache@v2
+      - run: cargo test --workspace

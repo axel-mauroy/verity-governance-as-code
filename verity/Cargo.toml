@@ -2,6 +2,7 @@
 name = "verity"
 version.workspace = true
 edition.workspace = true
+publish = false
 
 [dependencies]
 verity-core = { workspace = true }
