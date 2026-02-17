@@ -49,10 +49,7 @@ pub trait Connector: Send + Sync {
 
     /// Register governance masking policies at the engine level.
     /// Default is no-op (engines like DuckDB use string-based PolicyRewriter instead).
-    async fn register_governance(
-        &self,
-        _policies: crate::domain::governance::GovernancePolicySet,
-    ) {
+    async fn register_governance(&self, _policies: crate::domain::governance::GovernancePolicySet) {
         // No-op by default
     }
 }

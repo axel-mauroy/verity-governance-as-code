@@ -15,9 +15,9 @@
 
 use std::collections::HashMap;
 
+use datafusion::common::Result as DFResult;
 use datafusion::common::config::ConfigOptions;
 use datafusion::common::tree_node::{Transformed, TreeNode};
-use datafusion::common::Result as DFResult;
 use datafusion::logical_expr::{Expr, LogicalPlan, Projection};
 use datafusion::optimizer::AnalyzerRule;
 use datafusion::prelude::*;
@@ -98,37 +98,31 @@ impl GovernanceRule {
             MaskingPolicy::Hash | MaskingPolicy::PiiMasking => {
                 self.build_hash_expr(col_expr).alias(alias_name)
             }
-            MaskingPolicy::Redact => {
-                lit("REDACTED").alias(alias_name)
-            }
-            MaskingPolicy::MaskEmail => {
-                regexp_replace(
-                    col_expr.clone(),
-                    lit("(^.).*(@.*$)"),
-                    lit("\\1****\\2"),
-                    None,
-                )
-                .alias(alias_name)
-            }
+            MaskingPolicy::Redact => lit("REDACTED").alias(alias_name),
+            MaskingPolicy::MaskEmail => regexp_replace(
+                col_expr.clone(),
+                lit("(^.).*(@.*$)"),
+                lit("\\1****\\2"),
+                None,
+            )
+            .alias(alias_name),
         }
     }
 
     /// Recursively transform the plan tree, rewriting Projection nodes.
     fn transform_plan(&self, plan: LogicalPlan) -> DFResult<LogicalPlan> {
-        let transformed = plan.transform(|node| {
-            match node {
-                LogicalPlan::Projection(proj) => {
-                    let new_exprs: Vec<Expr> = proj
-                        .expr
-                        .into_iter()
-                        .map(|e| self.rewrite_expr(e))
-                        .collect();
+        let transformed = plan.transform(|node| match node {
+            LogicalPlan::Projection(proj) => {
+                let new_exprs: Vec<Expr> = proj
+                    .expr
+                    .into_iter()
+                    .map(|e| self.rewrite_expr(e))
+                    .collect();
 
-                    let new_proj = Projection::try_new(new_exprs, proj.input)?;
-                    Ok(Transformed::yes(LogicalPlan::Projection(new_proj)))
-                }
-                other => Ok(Transformed::no(other)),
+                let new_proj = Projection::try_new(new_exprs, proj.input)?;
+                Ok(Transformed::yes(LogicalPlan::Projection(new_proj)))
             }
+            other => Ok(Transformed::no(other)),
         })?;
 
         Ok(transformed.data)
@@ -172,8 +166,7 @@ mod tests {
             .iter()
             .flat_map(|b| {
                 let col = b.column(col_idx);
-                (0..b.num_rows())
-                    .map(move |i| array_value_to_string(col, i).unwrap_or_default())
+                (0..b.num_rows()).map(move |i| array_value_to_string(col, i).unwrap_or_default())
             })
             .collect()
     }
@@ -188,15 +181,21 @@ mod tests {
 
         let batches = ctx
             .sql("SELECT id, email, ssn FROM test_users")
-            .await.unwrap()
-            .collect().await.unwrap();
+            .await
+            .unwrap()
+            .collect()
+            .await
+            .unwrap();
 
         let ids = col_values(&batches, 0);
         let emails = col_values(&batches, 1);
         let ssns = col_values(&batches, 2);
 
         assert_eq!(ids, vec!["1"]);
-        assert_ne!(emails[0], "alice@test.com", "email should be masked by SHA-256");
+        assert_ne!(
+            emails[0], "alice@test.com",
+            "email should be masked by SHA-256"
+        );
         assert_eq!(ssns, vec!["REDACTED"]);
     }
 
@@ -208,12 +207,19 @@ mod tests {
         ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(empty_policies)));
 
         ctx.sql("CREATE TABLE clean (id INT, name VARCHAR) AS VALUES (1, 'Alice')")
-            .await.unwrap().collect().await.unwrap();
+            .await
+            .unwrap()
+            .collect()
+            .await
+            .unwrap();
 
         let batches = ctx
             .sql("SELECT id, name FROM clean")
-            .await.unwrap()
-            .collect().await.unwrap();
+            .await
+            .unwrap()
+            .collect()
+            .await
+            .unwrap();
 
         let names = col_values(&batches, 1);
         assert_eq!(names, vec!["Alice"], "clean columns should be unchanged");
@@ -223,19 +229,24 @@ mod tests {
     async fn test_redact_policy_replaces_value() {
         let ctx = SessionContext::new();
 
-        let policies = GovernancePolicySet::from_pairs(vec![(
-            "secret".to_string(),
-            "redact".to_string(),
-        )]);
+        let policies =
+            GovernancePolicySet::from_pairs(vec![("secret".to_string(), "redact".to_string())]);
         ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(policies)));
 
         ctx.sql("CREATE TABLE secrets (id INT, secret VARCHAR) AS VALUES (1, 'top_secret_data')")
-            .await.unwrap().collect().await.unwrap();
+            .await
+            .unwrap()
+            .collect()
+            .await
+            .unwrap();
 
         let batches = ctx
             .sql("SELECT id, secret FROM secrets")
-            .await.unwrap()
-            .collect().await.unwrap();
+            .await
+            .unwrap()
+            .collect()
+            .await
+            .unwrap();
 
         let secrets = col_values(&batches, 1);
         assert_eq!(secrets, vec!["REDACTED"]);
@@ -245,21 +256,26 @@ mod tests {
     async fn test_hash_with_salt() {
         let ctx = SessionContext::new();
 
-        let mut policies = GovernancePolicySet::from_pairs(vec![(
-            "email".to_string(),
-            "hash".to_string(),
-        )]);
+        let mut policies =
+            GovernancePolicySet::from_pairs(vec![("email".to_string(), "hash".to_string())]);
         policies.salt = Some("verity_salt_2026".to_string());
 
         ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(policies)));
 
         ctx.sql("CREATE TABLE salted (id INT, email VARCHAR) AS VALUES (1, 'alice@test.com')")
-            .await.unwrap().collect().await.unwrap();
+            .await
+            .unwrap()
+            .collect()
+            .await
+            .unwrap();
 
         let batches = ctx
             .sql("SELECT id, email FROM salted")
-            .await.unwrap()
-            .collect().await.unwrap();
+            .await
+            .unwrap()
+            .collect()
+            .await
+            .unwrap();
 
         let emails = col_values(&batches, 1);
         assert_ne!(emails[0], "alice@test.com", "email should be hashed");

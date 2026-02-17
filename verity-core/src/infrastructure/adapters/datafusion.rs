@@ -207,10 +207,7 @@ impl Connector for DataFusionConnector {
         true
     }
 
-    async fn register_governance(
-        &self,
-        policies: crate::domain::governance::GovernancePolicySet,
-    ) {
+    async fn register_governance(&self, policies: crate::domain::governance::GovernancePolicySet) {
         self.register_governance_rules(policies).await;
     }
 }

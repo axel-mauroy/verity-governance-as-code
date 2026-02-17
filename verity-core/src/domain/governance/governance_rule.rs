@@ -104,14 +104,8 @@ mod tests {
         ];
         let set = GovernancePolicySet::from_pairs(pairs);
         assert_eq!(set.column_policies.len(), 2);
-        assert_eq!(
-            set.column_policies.get("email"),
-            Some(&MaskingPolicy::Hash)
-        );
-        assert_eq!(
-            set.column_policies.get("ssn"),
-            Some(&MaskingPolicy::Redact)
-        );
+        assert_eq!(set.column_policies.get("email"), Some(&MaskingPolicy::Hash));
+        assert_eq!(set.column_policies.get("ssn"), Some(&MaskingPolicy::Redact));
     }
 
     #[test]

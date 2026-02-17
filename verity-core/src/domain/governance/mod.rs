@@ -1,7 +1,7 @@
 // verity-core/src/domain/governance/mod.rs
 
-pub mod guard;
 pub mod governance_rule;
+pub mod guard;
 pub mod pii;
 pub mod quality;
 pub mod rewriter;
@@ -14,11 +14,11 @@ pub use pii::{ColumnPolicy, PiiAction, PiiConfig, PiiPattern, PiiSeverity};
 pub mod configuration;
 pub use configuration::GovernanceConfig;
 // pub use self::governance::{GovernanceConfig as LegacyGovernanceConfig, PiiConfig, QualityConfig}; // Removed after migration
+pub use governance_rule::GovernancePolicySet;
 pub use quality::{QualityConfig, QualityRule};
 pub use rewriter::PolicyRewriter;
 pub use scanner::PiiScanner;
 pub use security_level::SecurityLevel;
-pub use governance_rule::GovernancePolicySet;
 
 // Structure ResourceGovernance
 use serde::{Deserialize, Serialize};

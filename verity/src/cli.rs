@@ -140,17 +140,12 @@ mod tests {
 
     #[test]
     fn test_cli_parse_inspect() {
-        let args = Cli::parse_from([
-            "verity",
-            "inspect",
-            "--table",
-            "users",
-            "--limit",
-            "10",
-        ]);
+        let args = Cli::parse_from(["verity", "inspect", "--table", "users", "--limit", "10"]);
         match args.command {
             Commands::Inspect {
-                table, limit, db_path,
+                table,
+                limit,
+                db_path,
             } => {
                 assert_eq!(table, "users");
                 assert_eq!(limit, 10);

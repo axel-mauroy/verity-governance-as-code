@@ -5,7 +5,9 @@
 use std::path::PathBuf;
 
 use verity_core::domain::governance::SecurityLevel;
-use verity_core::infrastructure::config::source::{GenerateOptions, generate_sources, save_sources};
+use verity_core::infrastructure::config::source::{
+    GenerateOptions, generate_sources, save_sources,
+};
 
 pub fn execute(
     project_dir: PathBuf,
