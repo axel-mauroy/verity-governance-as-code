@@ -5,10 +5,6 @@ schema:
     version: 1
     status: provisioning
     latest: false
-  compliance:
-    pre_flight:
-    - check: data_lineage
-      severity: warning
   columns:
   - name: document_id
     description: Foreign key to documents

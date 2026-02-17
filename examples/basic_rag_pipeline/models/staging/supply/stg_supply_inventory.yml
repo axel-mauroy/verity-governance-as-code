@@ -2,14 +2,6 @@ schema:
   - model_name: stg_supply_inventory
     description: "Warehouse stock levels"
 
-    compliance:
-      pre_flight:
-        - check: data_lineage
-          severity: warning
-      post_flight:
-        - check: data_lineage
-          severity: warning
-
     columns:
       - name: product_id
         tests:

@@ -183,7 +183,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_run_tests_no_drift() {
-        let node = ManifestNode {
+        let _node = ManifestNode {
             name: "test_model".into(),
             resource_type: ResourceType::Model,
             path: PathBuf::from("models/test.sql"),

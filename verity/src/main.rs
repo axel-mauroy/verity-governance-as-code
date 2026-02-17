@@ -39,5 +39,11 @@ async fn main() -> anyhow::Result<()> {
             table,
             limit,
         } => commands::inspect::execute(db_path, table, limit),
+
+        Commands::Lineage {
+            project_dir,
+            check,
+            format,
+        } => commands::lineage::execute(project_dir, check, format),
     }
 }

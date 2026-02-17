@@ -3,6 +3,7 @@
 pub mod catalog;
 pub mod clean;
 pub mod engine;
+pub mod lineage;
 pub mod materialization;
 pub mod ports;
 
@@ -17,6 +18,7 @@ pub mod validation;
 pub use catalog::CatalogGenerator;
 pub use clean::clean_project;
 pub use engine::execute_query;
+pub use lineage::LineageAnalyzer;
 pub use materialization::Materializer;
 pub use pipeline::run_pipeline;
 pub use validation::run_tests;

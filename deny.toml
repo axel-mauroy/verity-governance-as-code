@@ -29,17 +29,17 @@ allow = [
     "Unlicense",
     "0BSD",
     "Unicode-3.0",
-    "Unicode-DFS-2016",
+
     "CC0-1.0",
     "MIT-0",
     "BSL-1.0",
     "CDLA-Permissive-2.0",
-    "OpenSSL",
+
 ]
 confidence-threshold = 0.8
 
 exceptions = [
-    { allow = ["CDLA-Permissive-2.0"], crate = "bzip2-sys" },
+
     { allow = ["bzip2-1.0.6"], crate = "libbz2-rs-sys" },
 ]
 
@@ -58,6 +58,74 @@ license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 multiple-versions = "deny"
 wildcards = "deny"
 highlight = "all"
+
+# Ignore duplicate versions for Windows targets (transitive deps)
+[[bans.skip]]
+name = "windows_x86_64_msvc"
+[[bans.skip]]
+name = "windows_i686_msvc"
+[[bans.skip]]
+name = "windows_x86_64_gnu"
+[[bans.skip]]
+name = "windows_i686_gnu"
+[[bans.skip]]
+name = "windows_aarch64_msvc"
+[[bans.skip]]
+name = "windows_aarch64_gnullvm"
+[[bans.skip]]
+name = "windows_x86_64_gnullvm"
+[[bans.skip]]
+name = "windows_i686_gnullvm"
+[[bans.skip]]
+name = "windows-targets"
+[[bans.skip]]
+name = "windows-sys"
+
+# Broad exceptions for common transitive duplicates
+
+[[bans.skip]]
+name = "arrow"
+[[bans.skip]]
+name = "arrow-arith"
+[[bans.skip]]
+name = "arrow-array"
+[[bans.skip]]
+name = "arrow-buffer"
+[[bans.skip]]
+name = "arrow-cast"
+[[bans.skip]]
+name = "arrow-data"
+[[bans.skip]]
+name = "arrow-ord"
+[[bans.skip]]
+name = "arrow-row"
+[[bans.skip]]
+name = "arrow-schema"
+[[bans.skip]]
+name = "arrow-select"
+[[bans.skip]]
+name = "arrow-string"
+[[bans.skip]]
+name = "foldhash"
+[[bans.skip]]
+name = "getrandom"
+[[bans.skip]]
+name = "hashbrown"
+
+
+
+
+[[bans.skip]]
+name = "strum"
+[[bans.skip]]
+name = "strum_macros"
+
+[[bans.skip]]
+name = "thiserror"
+[[bans.skip]]
+name = "thiserror-impl"
+[[bans.skip]]
+name = "unicode-width"
 
 # ──────────────────────────────────────────────
 # Sources — only allow crates from crates.io

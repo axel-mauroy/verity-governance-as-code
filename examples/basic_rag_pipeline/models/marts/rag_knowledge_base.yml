@@ -5,9 +5,6 @@ schema:
   compliance:
     audit:
       enabled: true
-    pre_flight:
-      - check: data_lineage
-        severity: warning
         
   columns:
   - name: document_id

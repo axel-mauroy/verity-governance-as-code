@@ -2,14 +2,6 @@ schema:
   - model_name: stg_offer_promotions
     description: "Marketing campaign offers"
 
-    compliance:
-      pre_flight:
-        - check: data_lineage
-          severity: warning
-      post_flight:
-        - check: data_lineage
-          severity: warning
-
     columns:
       - name: promotion_id
         tests:

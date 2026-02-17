@@ -84,6 +84,21 @@ pub enum Commands {
         #[arg(long, default_value = "5")]
         limit: usize,
     },
+
+    /// 🔗 Analyzes data lineage and detects unsecured PII flows
+    Lineage {
+        /// Project directory
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
+
+        /// Exit with error if unsecured PII flows are detected
+        #[arg(long)]
+        check: bool,
+
+        /// Output format: mermaid | json
+        #[arg(long, default_value = "mermaid")]
+        format: String,
+    },
 }
 
 #[cfg(test)]

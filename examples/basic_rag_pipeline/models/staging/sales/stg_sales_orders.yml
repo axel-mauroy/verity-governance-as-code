@@ -2,14 +2,6 @@ schema:
   - model_name: stg_sales_orders
     description: "Customer sales orders"
 
-    compliance:
-      pre_flight:
-        - check: data_lineage
-          severity: warning
-      post_flight:
-        - check: data_lineage
-          severity: warning
-
     columns:
       - name: order_id
         tests:
