@@ -421,16 +421,9 @@ fn check_compliance(
     Ok(())
 }
 
-async fn count_rows(_connector: &dyn Connector, table_name: &str) -> Result<u64, VerityError> {
-    // ⚠️ DuckDB specific syntax
-    let _query = format!("SELECT count(*) FROM \"{}\"", table_name);
-    // On suppose que connector.query_scalar renvoie un u64, ou on parse le result.
-    // Ici simplifcation via execute qui ne retourne pas de rows dans l'interface actuelle.
-    // IL FAUDRA AJOUTER `query_scalar` au Trait Connector.
-
-    // Mock pour compilation si le trait n'est pas à jour :
-    // let count = connector.query_scalar(&query).await?;
-    Ok(100) // Placeholder: Remplacer par vrai appel DB
+async fn count_rows(connector: &dyn Connector, table_name: &str) -> Result<u64, VerityError> {
+    let query = format!("SELECT count(*) FROM \"{}\"", table_name);
+    connector.query_scalar(&query).await
 }
 
 fn save_json<T: serde::Serialize>(path: &Path, data: &T) -> Result<(), VerityError> {

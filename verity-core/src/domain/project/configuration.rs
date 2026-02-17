@@ -2,12 +2,24 @@ use crate::domain::governance::configuration::GovernanceConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
+/// SQL engine to use for pipeline execution.
+#[derive(Debug, Deserialize, Serialize, Clone, Default, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum Engine {
+    #[default]
+    DuckDB,
+    DataFusion,
+}
+
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ProjectConfig {
     pub name: String,
     pub version: String,
     #[serde(default = "default_profile")]
     pub profile: String,
+
+    #[serde(default)]
+    pub engine: Engine,
 
     #[serde(rename = "config-paths", default)]
     pub config_paths: Vec<String>,

@@ -86,10 +86,8 @@ impl Connector for DuckDBConnector {
         );
         self.execute(&query).await
     }
-}
 
-impl DuckDBConnector {
-    pub async fn materialize(
+    async fn materialize(
         &self,
         table_name: &str,
         sql: &str,
@@ -105,7 +103,7 @@ impl DuckDBConnector {
         Ok(materialization_type.to_string())
     }
 
-    pub async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
+    async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
         let conn = self.conn.lock().map_err(|_| {
             VerityError::Infrastructure(InfrastructureError::Io(std::io::Error::other(
                 "DuckDB Mutex Poisoned",
@@ -131,6 +129,10 @@ impl DuckDBConnector {
         })?;
 
         Ok(value)
+    }
+
+    fn engine_name(&self) -> &str {
+        "duckdb"
     }
 }
 

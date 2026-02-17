@@ -137,7 +137,6 @@ mod tests {
     }
 
     #[async_trait]
-    #[async_trait]
     impl Connector for MockConnector {
         async fn execute(&self, query: &str) -> Result<(), VerityError> {
             self.executed_queries
@@ -151,6 +150,15 @@ mod tests {
         }
         async fn register_source(&self, _name: &str, _path: &str) -> Result<(), VerityError> {
             Ok(())
+        }
+        async fn materialize(&self, _table_name: &str, _sql: &str, materialization_type: &str) -> Result<String, VerityError> {
+            Ok(materialization_type.to_string())
+        }
+        async fn query_scalar(&self, _query: &str) -> Result<u64, VerityError> {
+            Ok(0)
+        }
+        fn engine_name(&self) -> &str {
+            "mock"
         }
     }
 

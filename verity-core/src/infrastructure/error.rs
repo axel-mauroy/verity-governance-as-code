@@ -8,9 +8,16 @@ pub enum DatabaseError {
     #[error("DuckDB Engine Error: {0}")]
     #[diagnostic(
         code(verity::infra::database::duckdb),
-        help("An error occurred inside the SQL engine.")
+        help("An error occurred inside the DuckDB SQL engine.")
     )]
     DuckDB(#[from] duckdb::Error),
+
+    #[error("DataFusion Engine Error: {0}")]
+    #[diagnostic(
+        code(verity::infra::database::datafusion),
+        help("An error occurred inside the DataFusion SQL engine.")
+    )]
+    DataFusion(#[from] datafusion::error::DataFusionError),
 }
 
 #[derive(Error, Debug, Diagnostic)]

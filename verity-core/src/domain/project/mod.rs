@@ -2,7 +2,7 @@
 
 pub mod configuration;
 pub mod manifest;
-pub use configuration::ProjectConfig;
+pub use configuration::{Engine, ProjectConfig};
 
 pub use manifest::{
     ColumnInfo, LifecycleStatus, Manifest, ManifestNode, MaterializationType, NodeConfig,

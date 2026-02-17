@@ -35,7 +35,6 @@ tracing = "0.1.44"
 tempfile = "3.24.0"
 
 # --- Data & AI ---
-polars = { version = "0.45.0", features = ["lazy", "parquet", "dtype-date", "dtype-datetime", "csv"] }
 datafusion = "52.1.0"
 duckdb = { version = "1.4.3", features = ["bundled"] }
 minijinja = { version = "2.0", features = ["loader"] }

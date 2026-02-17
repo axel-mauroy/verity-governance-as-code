@@ -4,6 +4,7 @@ use clap::{Parser, Subcommand};
 use std::path::PathBuf;
 
 // Infrastructure (Config & Adapters)
+use verity_core::infrastructure::adapters::datafusion::DataFusionConnector;
 use verity_core::infrastructure::adapters::duckdb::DuckDBConnector;
 use verity_core::infrastructure::config::project::load_project_config;
 use verity_core::infrastructure::config::source::{
@@ -12,6 +13,10 @@ use verity_core::infrastructure::config::source::{
 
 // Domain (Enums for the CLI)
 use verity_core::domain::governance::SecurityLevel;
+use verity_core::domain::project::Engine;
+
+// Ports
+use verity_core::ports::connector::Connector;
 
 // Application (Use Cases)
 use std::sync::Arc;
@@ -104,20 +109,24 @@ async fn main() -> anyhow::Result<()> {
 
             // A. Load the Config (Infra)
             println!("⚙️  Loading configuration...");
-            // The '?' propagates automatically InfrastructureError -> anyhow::Error
             let config = load_project_config(&project_dir)?;
             println!("   Project: {} (v{})", config.name, config.version);
 
-            // B. Instantiate the DB Adapter (DuckDB)
-            // For MVP, the DB file is hardcoded or derived.
-            // Ideally, it would come from `config.target_path` or `profiles.yml`.
-            let db_path = "verity_db.duckdb";
-            let connector = DuckDBConnector::new(db_path)?;
-
-            // ...
+            // B. Instantiate the DB Adapter based on engine config
+            let connector: Box<dyn Connector> = match config.engine {
+                Engine::DuckDB => {
+                    println!("   Engine: DuckDB 🦆");
+                    let db_path = "verity_db.duckdb";
+                    Box::new(DuckDBConnector::new(db_path)?)
+                }
+                Engine::DataFusion => {
+                    println!("   Engine: Apache DataFusion 🏹");
+                    let target_dir = project_dir.join(&config.target_path);
+                    Box::new(DataFusionConnector::new(&target_dir)?)
+                }
+            };
 
             // C. Run the Pipeline (Application Layer)
-            // Here is where dependency injection happens : we pass 'connector' and 'config'.
             let manifest_loader = GraphDiscovery;
             let template_engine = Arc::new(JinjaRenderer::new());
             let schema_source = SchemaAdapter;
@@ -128,7 +137,7 @@ async fn main() -> anyhow::Result<()> {
                 &schema_source,
                 &project_dir,
                 &config,
-                &connector,
+                connector.as_ref(),
                 select,
             )
             .await;

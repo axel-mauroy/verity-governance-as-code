@@ -26,65 +26,49 @@ impl Materializer {
         // 2. Gestion Spéciale : Ephemeral
         // Un modèle éphémère ne crée aucun objet en base de données.
         if matches!(strategy, MaterializationType::Ephemeral) {
-            // On ne fait rien, on retourne juste l'info.
             return Ok("ephemeral".to_string());
         }
 
-        // 3. Construction de la requête DDL
-        let ddl_query = match (strategy, is_protected) {
-            // --- TABLE ---
-            (MaterializationType::Table, true) => {
-                // Protected : On ne crée que si ça n'existe pas.
-                // On ne touche pas aux données existantes.
-                format!(
-                    "CREATE TABLE IF NOT EXISTS {} AS {}",
-                    model_name, executed_sql
-                )
-            }
-            (MaterializationType::Table, false) => {
-                // Standard : Full Refresh (On remplace tout).
-                // DuckDB supporte CREATE OR REPLACE TABLE.
-                format!("CREATE OR REPLACE TABLE {} AS {}", model_name, executed_sql)
-            }
-
-            // --- VIEW ---
-            (MaterializationType::View, true) => {
-                format!(
-                    "CREATE VIEW IF NOT EXISTS {} AS {}",
-                    model_name, executed_sql
-                )
-            }
-            (MaterializationType::View, false) => {
-                format!("CREATE OR REPLACE VIEW {} AS {}", model_name, executed_sql)
-            }
-
-            // --- INCREMENTAL (Future) ---
+        // 3. Déterminer le type de matérialisation
+        let mat_type = match (strategy, is_protected) {
+            (MaterializationType::Table, _) => "table",
+            (MaterializationType::View, _) => "view",
             (MaterializationType::Incremental, _) => {
-                // Pour le MVP, on fallback sur une table replace
                 eprintln!(
                     "⚠️ Incremental not yet implemented for '{}', falling back to Table Replace.",
                     model_name
                 );
-                format!("CREATE OR REPLACE TABLE {} AS {}", model_name, executed_sql)
+                "table"
             }
-
-            // Cas impossible théoriquement grâce au match Ephemeral plus haut
-            (MaterializationType::Ephemeral, _) => String::new(),
+            (MaterializationType::Ephemeral, _) => unreachable!(),
         };
 
-        // 4. Exécution via le Port
-        // On n'a plus besoin des DROP manuels car CREATE OR REPLACE gère ça proprement
-        // (sauf si on change de type View <-> Table, mais DuckDB est permissif).
-        if !ddl_query.is_empty() {
-            connector.execute(&ddl_query).await.map_err(|e| {
-                VerityError::InternalError(format!(
-                    "Model '{}' failed.\n    🛑 DB Error: {}\n    📄 Query: {}",
-                    model_name, e, ddl_query
-                ))
-            })?;
-        }
+        // 4. Construire le SQL en tenant compte du mode protected
+        let final_sql = if is_protected {
+            // Protected mode: use IF NOT EXISTS semantics
+            match mat_type {
+                "table" => format!("CREATE TABLE IF NOT EXISTS {} AS {}", model_name, executed_sql),
+                "view" => format!("CREATE VIEW IF NOT EXISTS {} AS {}", model_name, executed_sql),
+                _ => unreachable!(),
+            }
+        } else {
+            // Standard: delegate fully to the connector
+            return connector.materialize(model_name, executed_sql, mat_type).await
+                .map_err(|e| {
+                    VerityError::InternalError(format!(
+                        "Model '{}' failed.\n    🛑 DB Error: {}", model_name, e
+                    ))
+                });
+        };
 
-        // Retourne le nom de la stratégie pour les logs (ex: "table", "view")
+        // 5. Execute protected DDL directly
+        connector.execute(&final_sql).await.map_err(|e| {
+            VerityError::InternalError(format!(
+                "Model '{}' failed.\n    🛑 DB Error: {}\n    📄 Query: {}",
+                model_name, e, final_sql
+            ))
+        })?;
+
         Ok(format!("{:?}", strategy).to_lowercase())
     }
 }
@@ -126,6 +110,15 @@ mod tests {
         async fn register_source(&self, _name: &str, _path: &str) -> Result<(), VerityError> {
             Ok(())
         }
+        async fn materialize(&self, _table_name: &str, _sql: &str, materialization_type: &str) -> Result<String, VerityError> {
+            Ok(materialization_type.to_string())
+        }
+        async fn query_scalar(&self, _query: &str) -> Result<u64, VerityError> {
+            Ok(0)
+        }
+        fn engine_name(&self) -> &str {
+            "mock"
+        }
     }
 
     #[tokio::test]
@@ -137,10 +130,8 @@ mod tests {
             .await
             .unwrap();
 
+        // Non-protected mode delegates to connector.materialize() which returns the type
         assert_eq!(result, "view");
-        let queries = connector.executed_queries.lock().unwrap();
-        assert_eq!(queries.len(), 1);
-        assert_eq!(queries[0], "CREATE OR REPLACE VIEW my_model AS SELECT 1");
     }
 
     #[tokio::test]
@@ -157,12 +148,8 @@ mod tests {
                 .await
                 .unwrap();
 
+        // Non-protected mode delegates to connector.materialize() which returns the type
         assert_eq!(result, "table");
-        let queries = connector.executed_queries.lock().unwrap();
-        assert_eq!(
-            queries[0],
-            "CREATE OR REPLACE TABLE my_table AS SELECT * FROM src"
-        );
     }
 
     #[tokio::test]

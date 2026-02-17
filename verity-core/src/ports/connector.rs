@@ -17,12 +17,26 @@ pub struct ColumnSchema {
 
 #[async_trait]
 pub trait Connector: Send + Sync {
-    // 🟢 Changer Result<()> par Result<(), VerityError>
+    /// Execute a SQL statement (DDL or DML, no result expected).
     async fn execute(&self, query: &str) -> Result<(), VerityError>;
 
-    // 🟢 Idem ici
+    /// Fetch the column schema of a table/view.
     async fn fetch_columns(&self, table_name: &str) -> Result<Vec<ColumnSchema>, VerityError>;
 
-    // 🟢 Abstraction de l'enregistrement de source (ex: read_csv_auto)
+    /// Register a data source (e.g. CSV file) as a named table/view.
     async fn register_source(&self, name: &str, path: &str) -> Result<(), VerityError>;
+
+    /// Materialize a SQL query as a table or view.
+    async fn materialize(
+        &self,
+        table_name: &str,
+        sql: &str,
+        materialization_type: &str,
+    ) -> Result<String, VerityError>;
+
+    /// Execute a query and return a single scalar u64 value.
+    async fn query_scalar(&self, query: &str) -> Result<u64, VerityError>;
+
+    /// Return the engine name (for logging purposes).
+    fn engine_name(&self) -> &str;
 }
