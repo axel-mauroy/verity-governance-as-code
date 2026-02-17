@@ -23,7 +23,6 @@ duckdb = { workspace = true }
 datafusion = { workspace = true }
 validator = { workspace = true }
 walkdir = { workspace = true }
-lazy_static = { workspace = true }
 minijinja = { workspace = true }
 tracing = { workspace = true }
 tempfile = { workspace = true }

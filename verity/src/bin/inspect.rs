@@ -39,9 +39,9 @@ fn main() -> Result<()> {
 
         while let Some(row) = rows.next().into_diagnostic()? {
             let values: Vec<String> = (0..column_names.len())
-                .map(|i| {
-                    let val = row.get_ref(i).unwrap();
-                    format!("{:?}", val)
+                .map(|i| match row.get_ref(i) {
+                    Ok(val) => format!("{:?}", val),
+                    Err(_) => "ERROR".to_string(),
                 })
                 .collect();
 

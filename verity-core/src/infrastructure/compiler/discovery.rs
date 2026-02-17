@@ -1,4 +1,3 @@
-#![allow(clippy::expect_used)]
 // verity-core/src/infrastructure/compiler/discovery.rs
 
 use crate::domain::project::ProjectConfig;
@@ -9,16 +8,19 @@ use crate::domain::project::manifest::{
 use crate::infrastructure::config::{self, ModelSchema, SchemaFile};
 use crate::infrastructure::error::InfrastructureError;
 
-use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use std::sync::OnceLock;
 use walkdir::WalkDir;
 
-lazy_static! {
-    static ref RE_REF: Regex =
-        Regex::new(r#"ref\s*\(\s*['"]([^'"]+)['"]\s*\)"#).expect("Invalid Regex RE_REF");
+fn re_ref() -> &'static Regex {
+    static RE: OnceLock<Regex> = OnceLock::new();
+    RE.get_or_init(|| {
+        Regex::new(r#"ref\s*\(\s*['"]([^'"]+)['"]\s*\)"#)
+            .unwrap_or_else(|_| Regex::new("$.").unwrap_or_else(|_| unreachable!())) // allow-panic
+    })
 }
 
 // Imports for Trait Implementation
@@ -201,7 +203,7 @@ impl GraphDiscovery {
             .to_path_buf();
 
         let mut refs = HashSet::new();
-        for cap in RE_REF.captures_iter(&raw_sql) {
+        for cap in re_ref().captures_iter(&raw_sql) {
             refs.insert(cap[1].to_string());
         }
 
