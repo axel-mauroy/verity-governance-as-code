@@ -1,57 +1,52 @@
 // verity/src/cli.rs
+//
+// Single source of truth for all CLI definitions (Clap structs).
 
 use clap::{Parser, Subcommand};
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(name = "verity")]
+#[command(about = "The Hexagonal Data Contract & Transformation Engine", long_about = None)]
 #[command(version)]
-#[command(about = "The Governance-First Data Transformation Tool", long_about = None)]
 pub struct Cli {
-    /// Project directory (defaults to current directory)
-    #[arg(long, global = true, default_value = ".")]
-    pub project_dir: String,
-
     #[command(subcommand)]
     pub command: Commands,
 }
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// Initialize a new Verity project
-    Init {
-        /// Project name
-        name: String,
-    },
-    
-    /// Run the pipeline or specific models
+    /// 🚀 Runs the data pipeline (Models -> SQL -> Validation)
     Run {
-        /// Select specific models to run (e.g. users_enriched)
+        /// Project directory
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
+
+        /// Run only a specific model (ex: "stg_users")
         #[arg(long, short)]
         select: Option<String>,
     },
-    
-    /// Manage data sources
-    Sources {
-        #[command(subcommand)]
-        command: SourcesCommands,
+
+    /// 🧹 Cleans build artifacts (target/ folder)
+    Clean {
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
     },
 
-    /// Clean build artifacts
-    Clean,
+    /// ⚡ Executes a raw SQL query (Ad-hoc)
+    Query {
+        query: String,
+        #[arg(long, default_value = "verity_db.duckdb")]
+        db_path: String,
+    },
 
-    /// 📚 Generate data catalog documentation (HTML/JSON)
-    Docs {
+    /// 🕵️‍♀️ Scans data directory and generates 'models/sources.yaml'
+    Generate {
         /// Project directory
         #[arg(long, default_value = ".")]
-        project_dir: String,
-    },
-}
+        project_dir: PathBuf,
 
-#[derive(Subcommand)]
-pub enum SourcesCommands {
-    /// Automatically generate models/sources.yaml by scanning a data directory
-    Generate {
-        /// Data directory to scan (relative to project root)
+        /// Data directory relative to project (default: "data")
         #[arg(long, default_value = "data")]
         data_dir: String,
 
@@ -59,21 +54,35 @@ pub enum SourcesCommands {
         #[arg(long)]
         owner: Option<String>,
 
-        /// Mark new sources as containing PII
-        #[arg(long)]
+        /// Flag all new sources as containing PII by default
+        #[arg(long, default_value = "false")]
         pii: bool,
 
-        /// Default security level for new sources (internal, confidential, restricted)
-        #[arg(long, default_value = "internal")]
-        security: String,
-
         /// Remove sources from YAML that no longer exist on disk
-        #[arg(long)]
+        #[arg(long, default_value = "false")]
         prune: bool,
+    },
 
-        /// Interactive mode for manual name overrides
+    /// 📚 Generates the Data Catalog (HTML/JSON)
+    Docs {
+        /// Project directory
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
+    },
+
+    /// 🔍 Inspects a DuckDB table (schema + sample rows)
+    Inspect {
+        /// Path to the DuckDB database file
+        #[arg(long, default_value = "verity_db.duckdb")]
+        db_path: String,
+
+        /// Table name to inspect
         #[arg(long, short)]
-        interactive: bool,
+        table: String,
+
+        /// Number of sample rows to display
+        #[arg(long, default_value = "5")]
+        limit: usize,
     },
 }
 
@@ -82,25 +91,72 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_parse_run_select() {
-        let args = Cli::parse_from(&["verity", "run", "--select", "my_model"]);
+    fn test_cli_parse_run_defaults() {
+        let args = Cli::parse_from(["verity", "run"]);
         match args.command {
-            Commands::Run { select } => {
-                assert_eq!(select, Some("my_model".to_string()));
-            },
+            Commands::Run {
+                project_dir,
+                select,
+            } => {
+                assert_eq!(project_dir.to_string_lossy(), ".");
+                assert_eq!(select, None);
+            }
             _ => panic!("Expected Run command"),
         }
     }
 
     #[test]
-    fn test_parse_sources_generate_defaults() {
-        let args = Cli::parse_from(&["verity", "sources", "generate"]);
+    fn test_cli_parse_run_select() {
+        let args = Cli::parse_from([
+            "verity",
+            "run",
+            "--select",
+            "my_model",
+            "--project-dir",
+            "/tmp",
+        ]);
         match args.command {
-            Commands::Sources { command: SourcesCommands::Generate { data_dir, security, .. } } => {
-                assert_eq!(data_dir, "data");
-                assert_eq!(security, "internal");
-            },
-            _ => panic!("Expected Sources Generate command"),
+            Commands::Run {
+                project_dir,
+                select,
+            } => {
+                assert_eq!(project_dir.to_string_lossy(), "/tmp");
+                assert_eq!(select, Some("my_model".to_string()));
+            }
+            _ => panic!("Expected Run command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_generate() {
+        let args = Cli::parse_from(["verity", "generate", "--pii"]);
+        match args.command {
+            Commands::Generate { pii, owner: _, .. } => {
+                assert!(pii);
+            }
+            _ => panic!("Expected Generate command"),
+        }
+    }
+
+    #[test]
+    fn test_cli_parse_inspect() {
+        let args = Cli::parse_from([
+            "verity",
+            "inspect",
+            "--table",
+            "users",
+            "--limit",
+            "10",
+        ]);
+        match args.command {
+            Commands::Inspect {
+                table, limit, db_path,
+            } => {
+                assert_eq!(table, "users");
+                assert_eq!(limit, 10);
+                assert_eq!(db_path, "verity_db.duckdb");
+            }
+            _ => panic!("Expected Inspect command"),
         }
     }
 }

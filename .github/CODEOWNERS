@@ -1,11 +1,11 @@
 # ============================================
 # Verity — CODEOWNERS
 # ============================================
-# Chaque PR modifiant ces chemins requiert
-# l'approbation des owners listés.
+# Each PR modifying these paths requires
+# approval of the listed owners.
 # Docs: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
 
-# --- Global fallback (toute modification) ---
+# --- Global fallback (all modifications) ---
 * @axel-mauroy
 
 # --- Core Engine (Hexagonal Architecture) ---

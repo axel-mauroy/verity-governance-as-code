@@ -34,6 +34,7 @@ Single binary written in Rust. No Python `venv` hell. No "Cold Start".
 
 | Feature | Description |
 |---------|-------------|
+| **Dual SQL Engine** | Supports **DuckDB** (default) and **Apache DataFusion** — selectable via config |
 | **Parallel DAG Execution** | Independent layers execute concurrently via `tokio` for maximum throughput |
 | **Auto PII Masking** | Columns tagged with `policy: pii_masking` are automatically wrapped in `SHA256()` at compile time |
 | **Auto-Schema Propagation** | Undocumented columns are detected and added to `schema.yml` automatically |
@@ -50,7 +51,7 @@ Verity follows a **Hexagonal Architecture** (Ports & Adapters):
 ```
 ┌──────────────────────────────────────────────────────┐
 │                    verity (CLI)                       │
-│  clap-based CLI: run, clean, generate, docs, query   │
+│  run, clean, generate, docs, query, inspect           │
 ├──────────────────────────────────────────────────────┤
 │                  verity-core                          │
 │                                                      │
@@ -71,8 +72,8 @@ Verity follows a **Hexagonal Architecture** (Ports & Adapters):
 │  │  SchemaSource                                   │ │
 │  ├─────────────────────────────────────────────────┤ │
 │  │  Infrastructure (Adapters)                      │ │
-│  │  DuckDB Connector, Jinja Renderer,              │ │
-│  │  Config Loader, Graph Discovery, Atomic FS      │ │
+│  │  DuckDB + DataFusion Connectors,                │ │
+│  │  Jinja Renderer, Config Loader, Atomic FS       │ │
 │  └─────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────┘
 ```
@@ -81,16 +82,16 @@ Verity follows a **Hexagonal Architecture** (Ports & Adapters):
 
 | Module | Layer | Responsibility |
 |--------|-------|----------------|
-| `ports::connector` | Ports | Database abstraction trait (`execute`, `fetch_columns`, `register_source`) |
+| `ports::connector` | Ports | Database abstraction trait (`execute`, `fetch_columns`, `register_source`, `materialize`, `query_scalar`) |
 | `domain::governance` | Domain | `PolicyRewriter` (PII masking), `SecurityLevel`, `PiiScanner` |
 | `domain::graph` | Domain | `GraphSolver` — DAG resolution and layer-based execution planning |
-| `domain::project` | Domain | `Manifest`, `ManifestNode`, `NodeConfig`, lifecycle management |
+| `domain::project` | Domain | `Manifest`, `ManifestNode`, `NodeConfig`, `Engine` enum, lifecycle management |
 | `domain::compliance` | Domain | `RowCountCheck`, anomaly detection, post-flight checks |
 | `application::pipeline` | Application | Pipeline orchestration: Compile → Govern → Materialize → Validate |
-| `application::materialization` | Application | `Materializer` — DuckDB `VIEW`/`TABLE` creation logic |
+| `application::materialization` | Application | `Materializer` — engine-agnostic `VIEW`/`TABLE` creation via `Connector` trait |
 | `application::validation` | Application | Schema drift detection, data quality tests (`unique`, `not_null`) |
 | `application::catalog` | Application | `CatalogGenerator` — HTML/JSON data catalog |
-| `infrastructure::adapters` | Infrastructure | `DuckDBConnector` — DuckDB integration |
+| `infrastructure::adapters` | Infrastructure | `DuckDBConnector` + `DataFusionConnector` — dual SQL engine support |
 | `infrastructure::compiler` | Infrastructure | `GraphDiscovery` (manifest loading), `JinjaRenderer` (SQL templating) |
 | `infrastructure::config` | Infrastructure | YAML parsing (`ProjectConfig`, `SchemaFile`, `SourceConfig`) |
 | `infrastructure::fs` | Infrastructure | Atomic file writes |
@@ -108,7 +109,7 @@ cargo install --path verity
 ### CLI Commands
 
 ```bash
-# Run the full pipeline
+# Run the full pipeline (uses engine from config, defaults to DuckDB)
 verity run
 
 # Run a single model
@@ -132,9 +133,28 @@ verity docs
 # Run ad-hoc SQL queries
 verity query "SELECT * FROM stg_users LIMIT 5"
 
+# Inspect a table (schema + sample rows)
+verity inspect --table users --db-path target/verity.duckdb --limit 10
+
 # Clean build artifacts
 verity clean
 ```
+
+### Engine Selection
+
+Verity supports two SQL execution engines. Set the `engine` field in `verity_project_conf.yaml`:
+
+```yaml
+# verity_project_conf.yaml
+name: my_project
+version: "0.1.0"
+engine: duckdb       # Options: duckdb (default), datafusion
+```
+
+| Engine | Storage | Best For |
+|--------|---------|----------|
+| **DuckDB** (default) | Single `.duckdb` file | OLAP queries, local dev, embedded analytics |
+| **DataFusion** | Parquet files in `target/data/` | Rust-native pipelines, cloud-ready, extensible |
 
 ### Project Structure
 ```
