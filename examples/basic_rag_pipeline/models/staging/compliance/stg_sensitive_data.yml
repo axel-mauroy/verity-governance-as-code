@@ -1,0 +1,25 @@
+schema:
+- model_name: stg_sensitive_data
+  description: Schema for stg_sensitive_data (auto-generated)
+  config: {}
+  columns:
+  - name: record_id
+    description: Auto-detected by Verity
+    tests:
+      - unique
+      - not_null
+  - name: credit_card
+    description: Auto-detected by Verity
+  - name: email
+    description: Auto-detected by Verity
+    policy: hash
+  - name: ssn
+    description: Auto-detected by Verity
+    policy: redact
+  - name: phone
+    description: Auto-detected by Verity
+    policy: hash
+  - name: customer_name
+    description: Auto-detected by Verity
+  - name: notes
+    description: Auto-detected by Verity

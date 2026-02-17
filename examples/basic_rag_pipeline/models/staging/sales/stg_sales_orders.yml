@@ -1,0 +1,32 @@
+schema:
+  - model_name: stg_sales_orders
+    description: "Customer sales orders"
+
+    compliance:
+      pre_flight:
+        - check: data_lineage
+          severity: warning
+      post_flight:
+        - check: data_lineage
+          severity: warning
+
+    columns:
+      - name: order_id
+        tests:
+          - unique
+          - not_null
+      - name: customer_id
+        tests:
+          - not_null
+          # - relationships:
+          #     to: stg_customer_profiles
+          #     field: customer_id
+      - name: total_amount
+        tests:
+          - not_null
+      - name: status
+        tests:
+          - not_null
+      - name: order_date
+        tests:
+          - not_null

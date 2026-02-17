@@ -1,0 +1,23 @@
+schema:
+- model_name: stg_predictions
+  description: Version 1 of stg_predictions
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      tech_owner: Axel Mauroy
+  columns:
+  - name: model_id
+    description: Auto-detected
+  - name: user_id
+    description: Auto-detected
+  - name: churn_probability
+    description: Auto-detected
+  - name: prediction_date
+    description: Auto-detected
+  - name: prediction_id
+    description: Auto-detected

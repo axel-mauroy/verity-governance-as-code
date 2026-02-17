@@ -1,0 +1,22 @@
+schema:
+- model_name: stg_profiles
+  description: Schema for stg_profiles (auto-generated)
+  config: {}
+  columns:
+  - name: signup_date
+    description: Auto-detected by Verity
+  - name: last_login
+    description: Auto-detected by Verity
+  - name: last_name
+    description: Auto-detected by Verity
+  - name: account_status
+    description: Auto-detected by Verity
+  - name: email
+    description: Auto-detected by Verity
+    policy: hash
+  - name: segment
+    description: Auto-detected by Verity
+  - name: customer_id
+    description: Auto-detected by Verity
+  - name: first_name
+    description: Auto-detected by Verity

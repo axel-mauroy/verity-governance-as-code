@@ -1,0 +1,28 @@
+version: '2'
+schema:
+- model_name: int_customer_sales
+  description: Version 1 of int_customer_sales
+  config:
+    materialized: table
+    version: 1
+    status: provisioning
+    latest: true
+    tech_owner: TODO
+  columns:
+  - name: email
+    description: Auto-detected
+    policy: pii_masking
+  - name: last_name
+    description: Auto-detected
+  - name: order_id
+    description: Auto-detected
+  - name: status
+    description: Auto-detected
+  - name: order_date
+    description: Auto-detected
+  - name: customer_id
+    description: Auto-detected
+  - name: total_amount
+    description: Auto-detected
+  - name: first_name
+    description: Auto-detected

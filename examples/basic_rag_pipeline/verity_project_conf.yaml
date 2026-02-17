@@ -1,0 +1,31 @@
+# examples/basic_rag_pipeline/verity_project_conf.yaml
+
+# Global Project Configuration
+name: basic_rag_pipeline
+version: "0.1.0"
+profile: default
+target-path: target
+
+config-paths: ["config"]
+model-paths: ["models"]
+
+defaults:
+  staging:
+    materialized: view
+  intermediate:
+    materialized: view
+  marts:
+    materialized: table
+
+governance:
+  pii_detection:
+    enabled: true
+    # patterns are present in config/policies.yml
+  
+  data_quality:
+    enabled: true 
+    # rules are present in config/quality.yml
+
+  environments:
+    prod:
+      strict_mode: true

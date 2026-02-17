@@ -1,0 +1,17 @@
+schema:
+- model_name: rag_context
+  description: Schema for rag_context (auto-generated)
+  config: {}
+  columns:
+  - name: author_segment
+    description: Auto-detected by Verity
+  - name: document_id
+    description: Auto-detected by Verity
+  - name: author_customer_id
+    description: Auto-detected by Verity
+  - name: created_at
+    description: Auto-detected by Verity
+  - name: content
+    description: Auto-detected by Verity
+  - name: embedding_vector
+    description: Auto-detected by Verity

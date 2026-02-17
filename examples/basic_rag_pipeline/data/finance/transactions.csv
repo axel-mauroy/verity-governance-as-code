@@ -1,0 +1,4 @@
+transaction_id,account_id,amount_vat_excluded,amount_vat_included,vat_amount,currency,transaction_type,transaction_timestamp
+TXN_001,ACC_9982,1250.50,1375.55,125.05,EUR,CREDIT,2026-01-20 08:15:00
+TXN_002,ACC_1234,45.00,49.50,4.50,USD,DEBIT,2026-01-21 12:45:00
+TXN_003,ACC_9982,500.00,550.00,50.00,EUR,DEBIT,2026-01-22 17:00:00

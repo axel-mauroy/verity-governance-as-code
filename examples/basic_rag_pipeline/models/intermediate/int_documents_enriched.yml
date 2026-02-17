@@ -1,0 +1,45 @@
+schema:
+- model_name: int_documents_enriched
+  description: Intermediate model joining documents and embeddings with PII detection
+  config:
+    version: null
+    status: provisioning
+    latest: false
+  columns:
+  - name: document_id
+    description: Primary key from stg_documents
+    tests:
+    - unique
+    - not_null
+  - name: contains_pii
+    description: Flag indicating if PII was detected in the content
+    tests:
+    - not_null
+  - name: email_pii
+    description: Flag indicating if PII was detected in the author_email
+  - name: author_email
+    description: Email of the author
+    tests:
+    - not_null
+  - name: source_url
+    description: URL of the source
+    tests:
+    - not_null
+  - name: content
+    description: Content of the document
+    tests:
+    - not_null
+  - name: embedding_vector
+    description: Embedding vector of the document
+    tests:
+    - not_null
+  - name: model_name
+    description: Name of the model used for embedding
+    tests:
+    - not_null
+  - name: processed_at
+    description: Timestamp of when the document was processed
+    tests:
+    - not_null
+  - name: created_at
+    description: Auto-detected by Verity

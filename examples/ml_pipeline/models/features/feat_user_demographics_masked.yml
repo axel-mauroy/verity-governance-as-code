@@ -1,0 +1,25 @@
+schema:
+- model_name: feat_user_demographics_masked
+  description: Version 1 of feat_user_demographics_masked
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      tech_owner: Axel Mauroy
+  columns:
+  - name: email_hash
+    description: Auto-detected
+  - name: subscription_tier
+    description: Auto-detected
+  - name: user_id
+    description: Auto-detected
+  - name: name_masked
+    description: Auto-detected
+  - name: signup_date
+    description: Auto-detected
+  - name: region
+    description: Auto-detected

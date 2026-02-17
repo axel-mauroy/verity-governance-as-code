@@ -1,0 +1,41 @@
+schema:
+  - model_name: stg_documents
+    description: "Cleaned document data with PII detection"
+
+    compliance:
+      pre_flight:
+        - check: pii_detection
+          severity: error
+
+    columns:
+      - name: document_id
+        description: "Unique identifier for each document"
+        tests:
+          - unique
+          - not_null
+      - name: content
+        description: "Raw text content of the document"
+        policy: content_scanning
+      - name: source_url
+        description: "Original URL of the document"
+      - name: author_email
+        description: "Email of the document author"
+        policy: pii_masking
+        tests:
+          - not_null
+      - name: created_at
+        description: "Timestamp when document was created"
+        tests:
+          - not_null
+      - name: updated_at
+        description: "Timestamp when document was updated"
+        tests:
+          - not_null
+      - name: content_length
+        description: "Length of the document content"
+        tests:
+          - not_null
+      - name: processed_at
+        description: "Timestamp when document was processed"
+        tests:
+          - not_null

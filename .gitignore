@@ -1,0 +1,47 @@
+# ============================
+# Rust / Cargo
+# ============================
+/target/
+**/*.rs.bk
+Cargo.lock
+
+# ============================
+# DuckDB
+# ============================
+*.duckdb
+*.duckdb.wal
+
+# ============================
+# Verity pipeline artifacts
+# ============================
+**/target/compiled/
+**/target/run/
+**/target/manifest.json
+**/target/run_results.json
+**/target/state.json
+check_output.txt
+
+# Verity cache & logs
+.verity/cache/
+.verity/logs/
+.verity/audit.log
+
+# ============================
+# Data (large / generated)
+# ============================
+*.parquet
+
+# ============================
+# IDE
+# ============================
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ============================
+# OS
+# ============================
+.DS_Store
+Thumbs.db

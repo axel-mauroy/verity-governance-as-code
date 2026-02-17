@@ -1,0 +1,29 @@
+schema:
+- model_name: train_churn_dataset_v1
+  description: Version 1 of train_churn_dataset_v1
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      tech_owner: Axel Mauroy
+  columns:
+  - name: api_usage_count
+    description: Auto-detected
+  - name: subscription_tier
+    description: Auto-detected
+  - name: region
+    description: Auto-detected
+  - name: avg_session_duration
+    description: Auto-detected
+  - name: target_churn
+    description: Auto-detected
+  - name: total_sessions
+    description: Auto-detected
+  - name: user_id
+    description: Auto-detected
+  - name: signup_date
+    description: Auto-detected

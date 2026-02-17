@@ -1,0 +1,4 @@
+promotion_id,name,discount_pct,start_date,end_date,active
+OFF_SUMMER,Summer Sale 2026,20,2026-06-01,2026-08-31,false
+OFF_WINTER,Winter clearance,50,2026-01-01,2026-01-31,true
+OFF_NEWYEAR,New Year 2026,10,2026-01-01,2026-01-07,false

@@ -1,0 +1,28 @@
+version: '2'
+schema:
+- model_name: int_active_customers
+  description: Version 1 of int_active_customers
+  config:
+    materialized: table
+    version: 1
+    status: provisioning
+    latest: true
+    tech_owner: TODO
+  columns:
+  - name: segment
+    description: Auto-detected
+  - name: email
+    description: Auto-detected
+    policy: pii_masking
+  - name: customer_id
+    description: Auto-detected
+  - name: account_status
+    description: Auto-detected
+  - name: last_login
+    description: Auto-detected
+  - name: signup_date
+    description: Auto-detected
+  - name: last_name
+    description: Auto-detected
+  - name: first_name
+    description: Auto-detected

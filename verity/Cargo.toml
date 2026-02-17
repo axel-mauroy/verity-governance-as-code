@@ -1,0 +1,15 @@
+[package]
+name = "verity"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+verity-core = { workspace = true }
+
+clap = { workspace = true }
+tokio = { workspace = true }
+anyhow = { workspace = true }
+tracing = { workspace = true }
+miette = { workspace = true }
+duckdb = { workspace = true }
+tracing-subscriber = "0.3.22"

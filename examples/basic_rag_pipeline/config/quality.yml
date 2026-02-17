@@ -1,0 +1,172 @@
+# examples/basic_rag_pipeline/config/quality.yml
+
+# Data Quality Rules
+data_quality:
+  environments:
+    dev:
+      enabled: true
+    uat:
+      enabled: true
+    prod:
+      enabled: true
+
+rules:
+  - name: no_null_primary_keys
+    description: "Primary keys must not be null"
+    severity: error
+
+  - name: referential_integrity
+    description: "Column must have referential integrity"
+    severity: error
+    column: user_id
+    reference_table: users
+    reference_column: id
+
+  - name: surrogate_key_uniqueness
+    description: "Surrogate key must be unique"
+    severity: error
+    column: surrogate_key
+    
+  - name: unique_ids
+    description: "IDs must be unique"
+    severity: error
+    column: id
+    
+  - name: not_null_columns
+    description: "Columns must not be null"
+    severity: error
+    columns: [id, name, email]
+    
+  - name: max_value
+    description: "Column must not exceed max value"
+    severity: error
+    column: age
+    max_value: 120
+    
+  - name: min_value
+    description: "Column must not be less than min value"
+    severity: error
+    column: age
+    min_value: 0
+    
+  - name: accepted_values
+    description: "Column must have accepted values"
+    severity: error
+    column: status
+    values: ["active", "inactive", "pending"]
+    
+  - name: regex_match
+    description: "Column must match regex pattern"
+    severity: error
+    column: email
+    pattern: "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+    
+  - name: date_validity
+    description: "Date must be valid"
+    severity: error
+    column: date
+    
+  - name: date_range
+    description: "Date must be within range"
+    severity: error
+    column: date
+    min_date: 2022-01-01
+    max_date: 2023-12-31
+    
+  - name: sum_check
+    description: "Sum of columns must match expected value"
+    severity: error
+    columns: [col1, col2, col3]
+    expected_sum: < 100
+    
+  - name: embedding_dimension_check
+    description: "Embeddings must have correct dimensions"
+    severity: error
+    expected_dimensions: 1536
+    check_normalization: true
+
+  - name: embedding_normalization_check
+    description: "Embeddings must be normalized (unit vectors)"
+    severity: error
+    check_normalization: true
+  
+  - name: embedding_nan_check
+    description: "Embeddings must not contain NaN values"
+    severity: error
+    column: embedding
+
+  - name: embedding_null_check
+    description: "Embeddings must not be null"
+    severity: error
+    column: embedding
+
+  - name: embedding_zero_vector_check
+    description: "Embeddings must not be zero vectors"
+    severity: error
+    column: embedding
+
+  - name: embedding_range_check
+    description: "Embeddings must be within range"
+    severity: error
+    column: embedding
+    min_value: -1
+    max_value: 1
+
+  - name: embedding_sparsity_check
+    description: "Embeddings must not be too sparse"
+    severity: error
+    column: embedding
+    sparsity_threshold: 0.1
+
+  - name: embedding_distribution_check
+    description: "Embeddings must have normal distribution"
+    severity: error
+    column: embedding
+    mean: 0
+    std_dev: 1
+
+  - name: embedding_similarity_check
+    description: "Embeddings must be similar to reference embeddings"
+    severity: error
+    column: embedding
+    reference_embeddings: ["embedding1", "embedding2", "embedding3"]
+    similarity_threshold: 0.7
+
+  - name: embedding_consistency_check
+    description: "Embeddings must be consistent across different models"
+    severity: error
+    column: embedding
+    reference_models: ["model1", "model2", "model3"]
+    consistency_threshold: 0.7
+
+  - name: embedding_drift_check
+    description: "Embeddings must not drift over time"
+    severity: error
+    column: embedding
+    reference_period: "2022-01-01 to 2023-12-31"
+    drift_threshold: 0.1
+
+  - name: embedding_outlier_check
+    description: "Embeddings must not be outliers"
+    severity: error
+    column: embedding
+    outlier_threshold: 3
+
+  - name: embedding_duplicates_check
+    description: "Embeddings must not be duplicates"
+    severity: error
+    column: embedding
+    duplicate_threshold: 0.9
+
+  - name: embedding_uniqueness_check
+    description: "Embeddings must be unique"
+    severity: error
+    column: embedding
+    uniqueness_threshold: 0.9
+
+  - name: embedding_completeness_check
+    description: "Embeddings must be complete"
+    severity: error
+    column: embedding
+    completeness_threshold: 0.9
+    

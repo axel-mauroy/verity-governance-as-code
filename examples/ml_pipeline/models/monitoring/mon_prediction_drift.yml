@@ -1,0 +1,25 @@
+schema:
+- model_name: mon_prediction_drift
+  description: Version 1 of mon_prediction_drift
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      tech_owner: Axel Mauroy
+  columns:
+  - name: min_churn_prob
+    description: Auto-detected
+  - name: prediction_date
+    description: Auto-detected
+  - name: avg_churn_prob
+    description: Auto-detected
+  - name: max_churn_prob
+    description: Auto-detected
+  - name: prediction_count
+    description: Auto-detected
+  - name: model_id
+    description: Auto-detected

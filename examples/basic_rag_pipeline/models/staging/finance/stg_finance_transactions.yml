@@ -1,0 +1,139 @@
+schema:
+  - model_name: stg_finance_transactions
+    description: "Transactions bancaires nettoyées et conformes."
+    
+    config:
+      materialized: table
+      tech_owner: "finance_data_team@@verity.com"
+      business_owner: "finance_team@@verity.com"
+      security_level: confidential
+      version: 1
+      latest: false
+      status: erased
+      erasure_date: "2024-01-31"
+      replacement_model: "stg_finance_transactions_v2"
+    
+    compliance:
+      pre_flight:
+        - check: strict_schema_validation
+          severity: error
+      post_flight:
+        - check: row_count_anomaly
+          threshold: 0.1 # 10% variation
+    
+    columns:
+      - name: transaction_id
+        tests:
+          - unique
+          - not_null
+      - name: amount
+        description: "Transaction amount"
+        tests:
+          - not_null
+      - name: currency
+        tests:
+          - not_null
+      - name: transaction_type
+        tests:
+          - not_null
+      - name: transaction_date
+        tests:
+          - not_null
+      - name: account_id
+        tests:
+          - not_null
+
+  - model_name: stg_finance_transactions_v2
+    description: "Transactions bancaires nettoyées et conformes."
+    
+    config:
+      materialized: table
+      tech_owner: "finance_data_team@@verity.com"
+      business_owner: "finance_team@@verity.com"
+      security_level: confidential
+      version: 2
+      latest: true
+      status: deprecated
+      deprecation_date: "2024-12-31"
+      replacement_model: "stg_finance_transactions_v3"
+    
+    compliance:
+      pre_flight:
+        - check: strict_schema_validation
+          severity: error
+      post_flight:
+        - check: row_count_anomaly
+          threshold: 0.1 # 10% variation
+    
+    columns:
+      - name: transaction_id
+        tests:
+          - unique
+          - not_null
+      - name: amount
+        description: "Transaction amount"
+        tests:
+          - not_null
+      - name: currency
+        tests:
+          - not_null
+      - name: transaction_type
+        tests:
+          - not_null
+      - name: transaction_timestamp
+        tests:
+          - not_null
+      - name: account_id
+        tests:
+          - not_null
+
+
+  - model_name: stg_finance_transactions_v3
+    description: "Transactions bancaires nettoyées et conformes."
+    
+    config:
+      materialized: table
+      tech_owner: "finance_data_team@@verity.com"
+      business_owner: "finance_team@@verity.com"
+      security_level: confidential
+      version: 3
+      latest: true
+      status: active
+    
+    compliance:
+      pre_flight:
+        - check: strict_schema_validation
+          severity: error
+      post_flight:
+        - check: row_count_anomaly
+          threshold: 0.07 # 7% variation
+    
+    columns:
+      - name: transaction_id
+        tests:
+          - unique
+          - not_null
+      - name: amount_vat_excluded
+        description: "Transaction amount"
+        tests:
+          - not_null
+      - name: amount_vat_included
+        description: "Transaction amount"
+        tests:
+          - not_null
+      - name: vat_amount
+        description: "Transaction amount"
+        tests:
+          - not_null
+      - name: currency
+        tests:
+          - not_null
+      - name: transaction_type
+        tests:
+          - not_null
+      - name: transaction_timestamp
+        tests:
+          - not_null
+      - name: account_id
+        tests:
+          - not_null

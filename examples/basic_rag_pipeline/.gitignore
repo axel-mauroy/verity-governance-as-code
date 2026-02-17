@@ -1,0 +1,29 @@
+# .gitignore for Verity projects
+
+# Verity cache and metadata
+.verity/cache/
+.verity/logs/
+.verity/audit.log
+
+# DuckDB files
+*.duckdb
+*.duckdb.wal
+
+# Data files (keep sample data, ignore large datasets)
+data/*.parquet
+!data/raw_documents.csv
+
+# Build artifacts
+target/
+*.o
+*.so
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

@@ -1,0 +1,25 @@
+sources:
+- name: raw_model_metadata
+  path: data/raw/model_metadata.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: raw_predictions
+  path: data/raw/predictions.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: raw_user_activity
+  path: data/raw/user_activity.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: raw_users
+  path: data/raw/users.csv
+  governance:
+    public: false
+    pii: true
+    security: confidential

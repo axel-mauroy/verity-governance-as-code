@@ -1,0 +1,69 @@
+sources:
+- name: customer_profiles
+  path: data/customer/profiles.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: customer_tags
+  path: data/customer/tags.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: digital_documents
+  path: data/digital/documents.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: digital_embeddings
+  path: data/digital/embeddings.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: finance_transactions
+  path: data/finance/transactions.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: human_resources_employees
+  path: data/human_resources/employees.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: offer_promotions
+  path: data/offer/promotions.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: sales_orders
+  path: data/sales/orders.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: supply_inventory
+  path: data/supply/inventory.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+- name: template_raw_documents
+  path: data/template/raw_documents.csv
+  governance:
+    public: true
+    pii: false
+    security: internal
+
+# ⚠️ COMPLIANCE TEST: Contains SSN, CC, Email, Phone
+- name: compliance_sensitive_data
+  path: data/compliance/sensitive_data.csv
+  governance:
+    public: false
+    pii: true  # Declared as PII
+    security: confidential

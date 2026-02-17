@@ -1,0 +1,60 @@
+schema:
+  - model_name: stg_customer_profiles
+    description: "Table des profils clients avec application automatique des politiques de confidentialité."
+    
+    config:
+      materialized: view
+      tech_owner: "data_team"
+      protected: false
+
+    columns:
+      - name: customer_id
+        description: "Clé primaire unique du client"
+        tests:
+          - unique
+          - not_null
+
+      - name: email
+        description: "Email personnel (PII). Cette colonne sera HASHÉE automatiquement par le moteur."
+        policy: hash 
+        tests:
+          - not_null
+
+      - name: first_name
+        description: "Prénom du client"
+        policy: hash
+        tests:
+          - not_null
+
+      - name: last_name
+        description: "Nom de famille du client"
+        policy: hash
+        tests:
+          - not_null
+
+      - name: segment
+        description: "Segment du client"
+        tests:
+          - not_null
+
+      - name: last_login
+        description: "Date de dernière connexion"
+        tests:
+          - not_null
+
+      - name: signup_date
+        description: "Date d'inscription"
+        tests:
+          - not_null
+
+      - name: phone_number
+        description: "Numéro de téléphone. Cette donnée doit être totalement masquée."
+        policy: redact
+
+      - name: account_status
+        description: "Statut du compte (active, inactive, etc.)"
+        tests:
+          - not_null
+
+      - name: account_end_date
+        description: "Date de fin de compte"

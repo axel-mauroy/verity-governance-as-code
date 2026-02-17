@@ -1,0 +1,65 @@
+# ./Cargo.toml (Workspace Root)
+
+[workspace]
+members = [
+    "verity-core",
+    "verity"
+]
+resolver = "2"
+
+[workspace.package]
+version = "0.1.0"
+authors = ["Axel MAUROY"]
+edition = "2024"
+license = "MIT"
+repository = "https://github.com/axel-mauroy/verity-governance-as-code.git"
+description = "The Governance-as-Code Data Pipeline Tool"
+
+[workspace.dependencies]
+
+# --- Core Logic ---
+tokio = { version = "1.49.0", features = ["full"] }
+anyhow = "1.0.100"
+thiserror = "1.0"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_yaml = "0.9.34"
+serde_json = "1.0"
+regex = "1.12.2"
+async-trait = "0.1.89"
+chrono = { version = "0.4", features = ["serde"] }
+miette = { version = "7.2.0", features = ["fancy"] }
+walkdir = "2.5.0"
+lazy_static = "1.5.0"
+validator = { version = "0.20", features = ["derive"] }
+tracing = "0.1.44"
+tempfile = "3.24.0"
+
+# --- Data & AI ---
+polars = { version = "0.45.0", features = ["lazy", "parquet", "dtype-date", "dtype-datetime", "csv"] }
+datafusion = "52.1.0"
+duckdb = { version = "1.4.3", features = ["bundled"] }
+minijinja = { version = "2.0", features = ["loader"] }
+
+# --- CLI ---
+clap = { version = "4.5.54", features = ["derive", "env"] }
+comfy-table = "7.2.2"
+
+# --- INTERNE ---
+verity-core = { path = "./verity-core", version = "0.1.0" }
+verity-connectors = { path = "./verity-connectors", version = "0.1.0" }
+
+# --- PROFILS ---
+[profile.dev]
+opt-level = 0
+debug = true
+split-debuginfo = "unpacked"
+
+[profile.release]
+opt-level = 3
+lto = "fat"
+codegen-units = 1
+panic = "abort"
+strip = "symbols"
+
+[profile.test]
+opt-level = 1

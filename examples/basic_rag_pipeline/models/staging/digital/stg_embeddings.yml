@@ -1,0 +1,29 @@
+schema:
+- model_name: stg_embeddings
+  description: Vector embeddings for semantic search
+  config:
+    version: null
+    status: provisioning
+    latest: false
+  compliance:
+    pre_flight:
+    - check: data_lineage
+      severity: warning
+  columns:
+  - name: document_id
+    description: Foreign key to documents
+    tests:
+    - not_null
+  - name: embedding_id
+    description: Unique identifier for each embedding
+    tests:
+    - unique
+    - not_null
+  - name: embedding_vector
+    description: 768-dimensional vector embedding
+  - name: model_name
+    description: Embedding model used (e.g., 'text-embedding-3-small')
+    tests:
+    - not_null
+  - name: created_at
+    description: Auto-detected by Verity

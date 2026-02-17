@@ -1,0 +1,4 @@
+record_id,customer_name,email,phone,ssn,credit_card,notes
+1,John Doe,john.doe@example.com,555-123-4567,123-45-6789,4111-1111-1111-1111,VIP customer
+2,Jane Smith,jane.smith@corp.net,555-987-6543,987-65-4321,5500-0000-0000-0004,Regular customer
+3,Bob Wilson,bob@startup.io,555-456-7890,456-78-9012,3400-0000-0000-009,Enterprise tier

@@ -1,0 +1,6 @@
+document_id,content,source_url,author_email,created_at,updated_at
+1,"Machine learning is a subset of artificial intelligence that focuses on building systems that learn from data.","https://example.com/ml-intro","john.doe@example.com","2024-01-15 10:30:00","2024-01-15 10:30:00"
+2,"Natural language processing enables computers to understand and generate human language.","https://example.com/nlp-basics","jane.smith@example.com","2024-01-16 14:20:00","2024-01-16 14:20:00"
+3,"Vector databases are optimized for storing and querying high-dimensional embeddings.","https://example.com/vector-db","alice.johnson@example.com","2024-01-17 09:15:00","2024-01-17 09:15:00"
+4,"Retrieval-augmented generation combines information retrieval with language generation.","https://example.com/rag-explained","bob.wilson@example.com","2024-01-18 16:45:00","2024-01-18 16:45:00"
+5,"Semantic search uses embeddings to find contextually similar documents rather than exact keyword matches.","https://example.com/semantic-search","carol.brown@example.com","2024-01-19 11:00:00","2024-01-19 11:00:00"

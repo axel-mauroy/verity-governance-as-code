@@ -1,0 +1,31 @@
+schema:
+  - model_name: stg_offer_promotions
+    description: "Marketing campaign offers"
+
+    compliance:
+      pre_flight:
+        - check: data_lineage
+          severity: warning
+      post_flight:
+        - check: data_lineage
+          severity: warning
+
+    columns:
+      - name: promotion_id
+        tests:
+          - unique
+          - not_null
+      - name: promotion_name
+        tests:
+          - unique
+          - not_null
+      - name: discount_pct
+        tests:
+          - not_null
+      - name: start_date
+        tests:
+          - not_null
+      - name: end_date
+        tests:
+          - not_null
+

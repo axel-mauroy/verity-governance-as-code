@@ -1,0 +1,31 @@
+schema:
+  - model_name: stg_employees
+    description: "Employee records"
+
+    compliance:
+      pre_flight:
+        - check: data_lineage
+          severity: warning
+      post_flight:
+        - check: data_lineage
+          severity: warning
+
+    columns:
+      - name: department
+        description: Auto-detected by Verity
+      - name: employee_id
+        description: Auto-detected by Verity
+        tests:
+          - unique
+          - not_null
+      - name: employee_name
+        description: Auto-detected by Verity
+      - name: role
+        description: Auto-detected by Verity
+      - name: hire_date
+        description: Auto-detected by Verity
+        tests:
+          - not_null
+      - name: salary_band
+        description: Auto-detected by Verity
+        policy: pii_blocking

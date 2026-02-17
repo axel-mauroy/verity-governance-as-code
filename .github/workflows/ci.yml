@@ -1,0 +1,64 @@
+name: Verity CI
+
+on:
+  push:
+    branches: [ "develop", "uat", "master" ]
+  pull_request:
+    branches: [ "develop", "uat", "master" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  # 1. Security Audit (Optimized with binary cache)
+  security_audit:
+    name: Security Audit (Cargo Audit)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      # Cache the cargo-audit binary to avoid recompiling it
+      - name: Cache cargo-audit binary
+        id: cache-cargo-audit
+        uses: actions/cache@v3
+        with:
+          path: ~/.cargo/bin/cargo-audit
+          key: ${{ runner.os }}-cargo-audit-0.18 # Clé de cache
+      
+      # Only if the cache is empty
+      - name: Install cargo-audit
+        if: steps.cache-cargo-audit.outputs.cache-hit != 'true'
+        run: cargo install cargo-audit
+
+      # Run the command directly (faster than the action wrapper if we already have the binary)
+      - name: Run Security Audit
+        run: cargo audit
+
+  # 2. Linting & Formatting
+  # 2. Build & Test (Optimized)
+  build_and_test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy, rustfmt
+
+      # Smart Caching (captures target/ and ~/.cargo)
+      - name: Cache Rust dependencies
+        uses: swatinem/rust-cache@v2
+
+      # 1. Formatting (Fastest fail)
+      - name: Check Formatting
+        run: cargo fmt --all -- --check
+
+      # 2. Clippy (Compiles dependencies & creates artifacts)
+      - name: Run Clippy
+        run: cargo clippy --workspace -- -D warnings
+
+      # 3. Tests (Reuses artifacts from Clippy step)
+      - name: Run Tests
+        run: cargo test --workspace

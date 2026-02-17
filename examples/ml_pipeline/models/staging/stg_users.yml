@@ -1,0 +1,27 @@
+schema:
+- model_name: stg_users
+  description: Version 1 of stg_users
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      tech_owner: Axel Mauroy
+  columns:
+  - name: name
+    description: User full name
+    policy: pii_masking
+  - name: signup_date
+    description: Auto-detected
+  - name: user_id
+    description: Auto-detected
+  - name: region
+    description: Auto-detected
+  - name: subscription_tier
+    description: Auto-detected
+  - name: email
+    description: User email address
+    policy: pii_masking

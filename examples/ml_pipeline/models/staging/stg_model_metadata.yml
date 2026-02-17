@@ -1,0 +1,25 @@
+schema:
+- model_name: stg_model_metadata
+  description: Version 1 of stg_model_metadata
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      tech_owner: Axel Mauroy
+  columns:
+  - name: hyperparameters
+    description: Auto-detected
+  - name: algorithm
+    description: Auto-detected
+  - name: version
+    description: Auto-detected
+  - name: created_by
+    description: Auto-detected
+  - name: model_id
+    description: Auto-detected
+  - name: created_at
+    description: Auto-detected

@@ -1,0 +1,23 @@
+schema:
+- model_name: feat_user_engagement
+  description: Version 1 of feat_user_engagement
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      tech_owner: Axel Mauroy
+  columns:
+  - name: user_id
+    description: Auto-detected
+  - name: last_active_at
+    description: Auto-detected
+  - name: api_usage_count
+    description: Auto-detected
+  - name: avg_session_duration
+    description: Auto-detected
+  - name: total_sessions
+    description: Auto-detected

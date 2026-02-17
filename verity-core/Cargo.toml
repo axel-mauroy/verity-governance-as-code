@@ -1,0 +1,28 @@
+# verity-core/Cargo.toml
+
+[package]
+name = "verity-core"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+tokio = { workspace = true }
+futures = "0.3"
+anyhow = { workspace = true }
+thiserror = { workspace = true }
+chrono = { workspace = true }
+serde = { workspace = true }
+serde_yaml = { workspace = true }
+serde_json = { workspace = true }
+regex = { workspace = true }
+async-trait = { workspace = true }
+miette = { workspace = true }
+duckdb = { workspace = true }
+validator = { workspace = true }
+walkdir = { workspace = true }
+lazy_static = { workspace = true }
+minijinja = { workspace = true }
+tracing = { workspace = true }
+tempfile = { workspace = true }

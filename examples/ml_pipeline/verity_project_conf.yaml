@@ -1,0 +1,43 @@
+name: churn_prediction_ml
+version: "0.1.0"
+profile: default
+target-path: target
+config-paths: ["config"]
+model-paths: ["models"]
+
+defaults:
+  staging:
+    materialized: view
+  features:
+    materialized: table
+  marts:
+    materialized: table
+  monitoring:
+    materialized: view
+
+governance:
+  pii_detection:
+    enabled: true
+  
+  data_quality:
+    enabled: true
+
+  domains:
+    - name: data_science
+      owner: "head_of_ds@verity.ai"
+    - name: engineering
+      owner: "vp_eng@verity.ai"
+    - name: compliance
+      owner: "ciso@verity.ai"
+
+quality:
+  defaults:
+    severity: error
+  rules:
+    - check: unique
+      severity: error
+    - check: not_null
+      severity: error
+    - check: row_count_anomaly
+      threshold: 0.1
+      severity: warning
