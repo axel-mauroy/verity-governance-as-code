@@ -1,0 +1,82 @@
+# examples/basic_rag_pipeline/config/policies.yml
+
+# Compliance Policies for RAG Pipeline
+# These policies are enforced by Verity during pre-flight checks
+
+# PII Detection Rules
+pii_detection:
+  enabled: true
+  
+  # Patterns to detect PII
+  patterns:
+    - name: email
+      regex: '\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+      severity: high
+      action: mask
+      masking_strategy: entity_preserving # Ex: "john@doe.com" -> "user_123@email.com"
+      
+    - name: phone
+      regex: '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
+      severity: high
+      action: mask
+      masking_strategy: redaction # Ex: "[REDACTED]"
+      
+    - name: ssn
+      regex: '\b\d{3}-\d{2}-\d{4}\b'
+      severity: critical
+      action: block
+      masking_strategy: redaction # Ex: "123-45-6789" -> "***-**-6789"
+      
+    - name: credit_card
+      regex: '\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'
+      severity: critical
+      action: block
+      masking_strategy: redaction # Ex: "1234-5678-9012-3456" -> "****-****-****-3456"
+
+  # Column-level policies
+  column_policies:
+    - column_name_pattern: '.*email.*'
+      policy: pii_masking
+      environments: [dev, uat]
+      
+    - column_name_pattern: '.*phone.*'
+      policy: pii_masking
+      environments: [dev, uat]
+      
+    - column_name_pattern: '.*ssn.*'
+      policy: pii_blocking
+      environments: [dev, uat, prod]
+
+
+
+# Audit and Logging
+audit:
+  enabled: true
+  log_events:
+    - pii_detected
+    - pii_masked
+    - data_blocked
+    - quality_check_failed
+    - model_executed
+    
+  retention_days: 90
+  format: json
+
+# Environment-specific overrides
+environments:
+  prod:
+    pii_detection:
+      strict_mode: true
+      fail_on_detection: true
+      
+  uat:
+    pii_detection:
+      strict_mode: true
+      fail_on_detection: false
+      auto_mask: true
+      
+  dev:
+    pii_detection:
+      strict_mode: false
+      fail_on_detection: false
+      auto_mask: true

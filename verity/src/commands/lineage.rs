@@ -38,6 +38,22 @@ pub fn execute(project_dir: PathBuf, check: bool, format: String) -> anyhow::Res
             println!("📄 JSON report saved to {}", out_path.display());
             println!("{}", json);
         }
+        "json-ld" => {
+            use verity_core::domain::governance::semantic::SemanticGraph;
+            // 1. Generate Semantic Graph
+            let semantic_graph = SemanticGraph::from_manifest(&manifest);
+            let json_ld = semantic_graph.to_json_string()?;
+
+            // 2. Save
+            if !target_dir.exists() {
+                std::fs::create_dir_all(&target_dir)?;
+            }
+            let out_path = target_dir.join("metadata_context.jsonld");
+            std::fs::write(&out_path, &json_ld)?;
+
+            println!("📄 JSON-LD Context saved to {}", out_path.display());
+            println!("{}", json_ld);
+        }
         _ => {
             // Default: Mermaid
             let mermaid = report.to_mermaid();

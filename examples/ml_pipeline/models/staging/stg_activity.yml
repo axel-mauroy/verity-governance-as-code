@@ -1,6 +1,6 @@
 schema:
 - model_name: stg_activity
-  description: Version 1 of stg_activity
+  description: User activity logs
   config:
     materialized: table
     data_contract: false
@@ -11,13 +11,17 @@ schema:
     governance:
       tech_owner: Axel Mauroy
   columns:
-  - name: duration_sec
-    description: Auto-detected
-  - name: user_id
-    description: Auto-detected
-  - name: activity_at
-    description: Auto-detected
   - name: activity_id
-    description: Auto-detected
+    tests:
+    - unique
+    - not_null
+  - name: user_id
+    tests:
+    - not_null
   - name: activity_type
-    description: Auto-detected
+    tests:
+    - not_null
+  - name: duration_sec
+    description: Auto-detected by Verity
+  - name: activity_at
+    description: Auto-detected by Verity

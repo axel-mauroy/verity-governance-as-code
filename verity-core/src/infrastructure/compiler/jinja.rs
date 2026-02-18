@@ -14,20 +14,14 @@ impl<'a> JinjaRenderer<'a> {
     pub fn new() -> Self {
         let mut env = Environment::new();
 
-        // 🟢 AJOUT DE LA FONCTION SOURCE
-        // Elle prend 2 arguments (domain, name) et renvoie "domain_name"
-        // Cela correspond à la logique de ton 'verity generate'
         env.add_function("source", |domain: String, name: String| -> String {
-            // On ajoute des guillemets pour que DuckDB soit content
             format!("\"{}_{}\"", domain, name)
         });
 
-        // 🟢 (Optionnel) Ajout d'une fonction ref() simple pour plus tard
         env.add_function("ref", |model_name: String| -> String {
             format!("\"{}\"", model_name)
         });
 
-        // Add basic filters
         env.add_filter("upper", |value: &str| Ok(value.to_uppercase()));
         env.add_filter("lower", |value: &str| Ok(value.to_lowercase()));
 
@@ -49,11 +43,8 @@ impl<'a> JinjaRenderer<'a> {
     ) -> Result<String, InfrastructureError> {
         let tmpl = self
             .env
-            .render_str(template_str, ()) // &() = contexte vide pour l'instant
-            .map_err(|e| {
-                // On enrichit l'erreur pour savoir où ça a planté
-                InfrastructureError::TemplateError(e)
-            })?;
+            .render_str(template_str, ())
+            .map_err(|e| InfrastructureError::TemplateError(e))?;
 
         Ok(tmpl)
     }
@@ -82,7 +73,6 @@ mod tests {
         let result = renderer.render("SELECT * FROM {{ table }}", "test")?;
         // Note: we passed empty context &() in impl, so variables won't work unless we change impl.
         // But the current implementation passes &().
-        // Let's check what functions work.
         assert_eq!(result, "SELECT * FROM "); // undefined variable evaluates to empty/error depending on config?
         // With default minijinja, undefined might be empty string.
         Ok(())

@@ -1,0 +1,29 @@
+# examples/basic_rag_pipeline/config/connections.yml
+
+# Database Connections
+# Define your targets and credentials here
+
+default:
+  target: local
+  outputs:
+    local:
+      type: datafusion
+      database:
+      threads: 4
+      job_execution_timeout_seconds: 1800
+      job_retries: 2
+    develop: &run_config_dev
+      type: snowflake
+      location: EU
+      method: oauth
+      project: "{{ var('project_id') }}" 
+      impersonate_service_account: "{{ env_var('PIPELINE_SERVICE_ACCOUNT') }}"
+      schema: "pipeline_example"
+    uat:
+      <<: *run_config_dev
+      project: "{{ var('project_id') }}"
+      impersonate_service_account: "{{ env_var('PIPELINE_SERVICE_ACCOUNT') }}"
+    prod:
+      <<: *run_config_dev
+      project: "{{ var('project_id') }}"
+      impersonate_service_account: "{{ env_var('PIPELINE_SERVICE_ACCOUNT') }}"

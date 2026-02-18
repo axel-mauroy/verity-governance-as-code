@@ -1,6 +1,6 @@
 schema:
 - model_name: stg_model_metadata
-  description: Version 1 of stg_model_metadata
+  description: ML Model Registry
   config:
     materialized: table
     data_contract: false
@@ -11,15 +11,19 @@ schema:
     governance:
       tech_owner: Axel Mauroy
   columns:
-  - name: hyperparameters
-    description: Auto-detected
-  - name: algorithm
-    description: Auto-detected
-  - name: version
-    description: Auto-detected
-  - name: created_by
-    description: Auto-detected
   - name: model_id
-    description: Auto-detected
+    tests:
+    - unique
+    - not_null
+  - name: version
+    tests:
+    - not_null
+  - name: algorithm
+    tests:
+    - not_null
   - name: created_at
-    description: Auto-detected
+    description: Auto-detected by Verity
+  - name: hyperparameters
+    description: Auto-detected by Verity
+  - name: created_by
+    description: Auto-detected by Verity

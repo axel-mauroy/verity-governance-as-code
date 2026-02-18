@@ -27,5 +27,9 @@ governance:
     # rules are present in config/quality.yml
 
   environments:
+    dev:
+      strict_mode: false
+    uat:
+      strict_mode: true
     prod:
       strict_mode: true

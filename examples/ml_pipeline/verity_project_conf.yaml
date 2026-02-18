@@ -10,27 +10,31 @@ model-paths: ["models"]
 defaults:
   staging:
     materialized: view
+  intermediate:
+    materialized: view
   features:
-    materialized: table
-  marts:
-    materialized: table
+    materialized: view
   monitoring:
     materialized: view
+  marts:
+    materialized: table
 
 governance:
   pii_detection:
     enabled: true
+    # patterns are present in config/policies.yml
   
   data_quality:
-    enabled: true
+    enabled: true 
+    # rules are present in config/quality.yml
 
-  domains:
-    - name: data_science
-      owner: "head_of_ds@verity.ai"
-    - name: engineering
-      owner: "vp_eng@verity.ai"
-    - name: compliance
-      owner: "ciso@verity.ai"
+  environments:
+    dev:
+      strict_mode: false
+    uat:
+      strict_mode: true
+    prod:
+      strict_mode: true
 
 quality:
   defaults:

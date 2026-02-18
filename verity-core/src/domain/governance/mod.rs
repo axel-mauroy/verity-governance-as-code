@@ -7,6 +7,7 @@ pub mod quality;
 pub mod rewriter;
 pub mod scanner;
 pub mod security_level;
+pub mod semantic;
 
 // Re-exports
 pub use guard::GovernanceGuard;

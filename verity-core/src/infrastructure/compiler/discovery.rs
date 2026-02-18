@@ -138,46 +138,6 @@ impl GraphDiscovery {
             }
         }
 
-        // Second pass: load from centralized schema.yml files (for models not found above)
-        let walker2 = WalkDir::new(root_dir).follow_links(true);
-        for entry in walker2.into_iter().filter_map(|e| e.ok()) {
-            let path = entry.path();
-            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
-            let filename = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
-
-            // Only process centralized schema files (schema.yml, _schema.yml)
-            if (ext == "yaml" || ext == "yml") && filename.contains("schema") {
-                match fs::read_to_string(path) {
-                    Ok(content) => {
-                        match serde_yaml::from_str::<SchemaFile>(&content) {
-                            Ok(parsed) => {
-                                // CORRECTION: parsed.models est un Vec direct
-                                for model in parsed.models {
-                                    // Only insert if not already found in per-model YAML
-                                    // CORRECTION: model.name -> model.model_name
-                                    if !map.contains_key(&model.model_name) {
-                                        map.insert(
-                                            model.model_name.clone(),
-                                            (model, path.to_path_buf()),
-                                        );
-                                    }
-                                }
-                            }
-                            Err(e) => {
-                                eprintln!(
-                                    "⚠️  [Discovery] Skipping malformed YAML file: {:?}\n    └─ Error: {}",
-                                    path.file_name().unwrap_or_default(),
-                                    e
-                                );
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        eprintln!("⚠️  [Discovery] Could not read file {:?}: {}", path, e);
-                    }
-                }
-            }
-        }
         Ok(map)
     }
 
@@ -279,10 +239,29 @@ impl GraphDiscovery {
         let columns = if let Some(schema_def) = schema_def {
             if let Some(cols) = &schema_def.columns {
                 cols.iter()
-                    .map(|c| ColumnInfo {
-                        name: c.name.clone(),
-                        tests: c.tests.clone().unwrap_or_default(),
-                        policy: c.policy.clone(),
+                    .map(|c| {
+                        let mut policy = c.policy.clone();
+
+                        // Fuzzy Policy Injection
+                        // Check if policy is missing and matches a fuzzy rule
+                        if policy.is_none() {
+                            for rule in &project_config.governance.pii_detection.column_policies {
+                                // Compile regex on the fly (performance trade-off for simplicity)
+                                if let Ok(re) = Regex::new(&rule.column_name_pattern) {
+                                    if re.is_match(&c.name) {
+                                        // TODO: Environment check if added to ColumnPolicy
+                                        policy = Some(rule.policy.clone());
+                                        break; // Apply first matching rule
+                                    }
+                                }
+                            }
+                        }
+
+                        ColumnInfo {
+                            name: c.name.clone(),
+                            tests: c.tests.clone().unwrap_or_default(),
+                            policy,
+                        }
                     })
                     .collect()
             } else {

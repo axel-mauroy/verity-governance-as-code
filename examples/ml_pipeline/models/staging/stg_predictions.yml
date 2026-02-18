@@ -1,6 +1,6 @@
 schema:
 - model_name: stg_predictions
-  description: Version 1 of stg_predictions
+  description: Model predictions log
   config:
     materialized: table
     data_contract: false
@@ -11,13 +11,17 @@ schema:
     governance:
       tech_owner: Axel Mauroy
   columns:
-  - name: model_id
-    description: Auto-detected
-  - name: user_id
-    description: Auto-detected
-  - name: churn_probability
-    description: Auto-detected
-  - name: prediction_date
-    description: Auto-detected
   - name: prediction_id
-    description: Auto-detected
+    tests:
+    - unique
+    - not_null
+  - name: churn_probability
+    description: Probability of churn (0-1)
+    tests:
+    - not_null
+  - name: prediction_date
+    description: Auto-detected by Verity
+  - name: model_id
+    description: Auto-detected by Verity
+  - name: user_id
+    description: Auto-detected by Verity
