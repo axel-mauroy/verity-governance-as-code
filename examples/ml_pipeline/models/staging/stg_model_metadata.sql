@@ -9,10 +9,10 @@ config:
 */
 
 SELECT 
-    model_id,
-    version,
-    created_by,
-    algorithm,
-    hyperparameters,
-    created_at::TIMESTAMP as created_at
+    "model_id",
+    "version",
+    "created_by",
+    "algorithm",
+    "hyperparameters",
+    CAST("created_at" AS TIMESTAMP) as "created_at"
 FROM {{ source('raw', 'model_metadata') }}

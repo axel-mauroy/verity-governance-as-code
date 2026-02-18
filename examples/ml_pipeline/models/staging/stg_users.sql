@@ -12,7 +12,7 @@ SELECT
     user_id,
     email, -- PII
     name,  -- PII
-    signup_date::DATE as signup_date,
+    CAST(signup_date AS DATE) as signup_date,
     region,
     subscription_tier
 FROM {{ source('raw', 'users') }}

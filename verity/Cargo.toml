@@ -13,4 +13,4 @@ anyhow = { workspace = true }
 tracing = { workspace = true }
 miette = { workspace = true }
 duckdb = { workspace = true }
-tracing-subscriber = "0.3.22"
+tracing-subscriber = { workspace = true }

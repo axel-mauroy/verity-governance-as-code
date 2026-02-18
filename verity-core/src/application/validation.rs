@@ -5,6 +5,7 @@ use std::collections::HashSet;
 // Imports Hexagonaux
 use crate::domain::project::manifest::ManifestNode;
 use crate::error::VerityError;
+use crate::domain::error::DomainError;
 use crate::ports::connector::Connector;
 
 pub async fn run_tests(
@@ -83,11 +84,21 @@ async fn check_not_null(
     column: &str,
     connector: &dyn Connector,
 ) -> Result<(), VerityError> {
+    // Quote identifiers to handle keywords (e.g. "algorithm")
     let sql = format!(
-        "SELECT CASE WHEN COUNT(*) > 0 THEN error('ASSERTION FAILED: Found NULL values in {}.{}') ELSE 0 END FROM {} WHERE {} IS NULL",
-        table, column, table, column
+        "SELECT count(*) FROM \"{}\" WHERE \"{}\" IS NULL",
+        table, column
     );
-    connector.execute(&sql).await
+    
+    let count = connector.query_scalar(&sql).await?;
+    
+    if count > 0 {
+        return Err(VerityError::Domain(DomainError::ComplianceError(format!(
+            "ASSERTION FAILED: Found {} NULL values in {}.{}", 
+            count, table, column
+        ))));
+    }
+    Ok(())
 }
 
 async fn check_unique(
@@ -95,12 +106,22 @@ async fn check_unique(
     column: &str,
     connector: &dyn Connector,
 ) -> Result<(), VerityError> {
+    // Check for duplicates by counting groups with > 1 row
+    // We use a subquery alias 'duplicates' for compatibility
     let sql = format!(
-        "SELECT CASE WHEN count(*) > 0 THEN error('ASSERTION FAILED: Found DUPLICATES in {}.{}') ELSE 0 END 
-         FROM (SELECT {} FROM {} GROUP BY {} HAVING count(*) > 1)",
-        table, column, column, table, column
+        "SELECT count(*) FROM (SELECT \"{}\" FROM \"{}\" GROUP BY \"{}\" HAVING count(*) > 1) as duplicates",
+        column, table, column
     );
-    connector.execute(&sql).await
+    
+    let count = connector.query_scalar(&sql).await?;
+    
+    if count > 0 {
+         return Err(VerityError::Domain(DomainError::ComplianceError(format!(
+            "ASSERTION FAILED: Found {} DUPLICATE values in {}.{}", 
+            count, table, column
+        ))));
+    }
+    Ok(())
 }
 
 #[cfg(test)]
