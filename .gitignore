@@ -3,13 +3,15 @@
 # ============================
 /target/
 **/*.rs.bk
-Cargo.lock
+# Cargo.lock est VOLONTAIREMENT retiré d'ici pour être versionné (Standard CLI)
 
 # ============================
-# DuckDB
+# DuckDB & Vector DB (Local)
 # ============================
 *.duckdb
 *.duckdb.wal
+.qdrant/
+.weaviate/
 
 # ============================
 # Verity pipeline artifacts
@@ -22,26 +24,26 @@ Cargo.lock
 check_output.txt
 
 # Verity cache & logs
-.verity/cache/
-.verity/logs/
-.verity/audit.log
+.verity/
+!.verity/config.yml.example 
+
+# ============================
+# Environment & Secrets
+# ============================
+.env
+.env.*
+!.env.example
 
 # ============================
 # Data (large / generated)
 # ============================
 *.parquet
+*.csv
+*.jsonl
 
 # ============================
-# IDE
+# IDE & OS
 # ============================
 .vscode/
 .idea/
-*.swp
-*.swo
-*~
-
-# ============================
-# OS
-# ============================
 .DS_Store
-Thumbs.db
