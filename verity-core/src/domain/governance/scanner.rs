@@ -99,13 +99,14 @@ impl PiiScanner {
 mod tests {
     use super::*;
     use crate::domain::governance::pii::PiiPattern;
+    use anyhow::Result;
 
     #[test]
-    fn test_pii_detection() {
-        // 1. Setup Config
+    fn test_pii_scanning_flow() -> Result<()> {
+        // 1. Setup config with a pattern
         let config = PiiConfig {
             enabled: true,
-            column_policies: vec![], // Non utilisé ici
+            column_policies: vec![],
             patterns: vec![PiiPattern {
                 name: "Email".to_string(),
                 regex: r"(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}".to_string(),
@@ -116,7 +117,7 @@ mod tests {
         };
 
         // 2. Build Scanner
-        let scanner = PiiScanner::new(&config).expect("Scanner should compile regex");
+        let scanner = PiiScanner::new(&config)?;
 
         // 3. Test Positive
         let violations = scanner.scan("Contactez-moi sur ceo@verity.ai pour discuter.");
@@ -128,6 +129,7 @@ mod tests {
         let safe_text = "Bonjour tout le monde";
         let violations = scanner.scan(safe_text);
         assert!(violations.is_empty());
+        Ok(())
     }
 
     #[test]

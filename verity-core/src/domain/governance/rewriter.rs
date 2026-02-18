@@ -73,6 +73,7 @@ impl PolicyRewriter {
 mod tests {
     use super::*;
     use crate::domain::project::{ColumnInfo, ManifestNode, NodeConfig, ResourceType};
+    use anyhow::Result;
     use std::path::PathBuf;
 
     fn create_mock_node(columns: Vec<ColumnInfo>) -> ManifestNode {
@@ -85,12 +86,13 @@ mod tests {
             refs: vec![],
             config: NodeConfig::default(),
             columns,
+            security_level: Default::default(),
             compliance: None,
         }
     }
 
     #[test]
-    fn test_apply_masking_no_policy() {
+    fn test_apply_masking_no_policy() -> Result<()> {
         let node = create_mock_node(vec![
             ColumnInfo {
                 name: "id".to_string(),
@@ -105,14 +107,15 @@ mod tests {
         ]);
 
         let sql = "SELECT * FROM raw_table";
-        let result = PolicyRewriter::apply_masking(sql, &node).unwrap();
+        let result = PolicyRewriter::apply_masking(sql, &node)?;
 
         // No policy => should return original SQL
         assert_eq!(result, sql);
+        Ok(())
     }
 
     #[test]
-    fn test_apply_masking_hash() {
+    fn test_apply_masking_hash() -> Result<()> {
         let node = create_mock_node(vec![ColumnInfo {
             name: "user_id".to_string(),
             tests: vec![],
@@ -120,14 +123,15 @@ mod tests {
         }]);
 
         let sql = "SELECT * FROM raw_table";
-        let result = PolicyRewriter::apply_masking(sql, &node).unwrap();
+        let result = PolicyRewriter::apply_masking(sql, &node)?;
 
         assert!(result.contains("WITH verity_governance_cte AS"));
         assert!(result.contains("SHA256(CAST(user_id AS VARCHAR)) AS user_id"));
+        Ok(())
     }
 
     #[test]
-    fn test_apply_masking_redact() {
+    fn test_apply_masking_redact() -> Result<()> {
         let node = create_mock_node(vec![ColumnInfo {
             name: "ssn".to_string(),
             tests: vec![],
@@ -135,13 +139,14 @@ mod tests {
         }]);
 
         let sql = "SELECT * FROM raw_table";
-        let result = PolicyRewriter::apply_masking(sql, &node).unwrap();
+        let result = PolicyRewriter::apply_masking(sql, &node)?;
 
         assert!(result.contains("'REDACTED' AS ssn"));
+        Ok(())
     }
 
     #[test]
-    fn test_apply_masking_email() {
+    fn test_apply_masking_email() -> Result<()> {
         let node = create_mock_node(vec![ColumnInfo {
             name: "email".to_string(),
             tests: vec![],
@@ -149,13 +154,14 @@ mod tests {
         }]);
 
         let sql = "SELECT * FROM raw_table";
-        let result = PolicyRewriter::apply_masking(sql, &node).unwrap();
+        let result = PolicyRewriter::apply_masking(sql, &node)?;
 
         assert!(result.contains("regexp_replace(email, '(^.).*(@.*$)', '\\1****\\2') AS email"));
+        Ok(())
     }
 
     #[test]
-    fn test_apply_masking_mixed() {
+    fn test_apply_masking_mixed() -> Result<()> {
         let node = create_mock_node(vec![
             ColumnInfo {
                 name: "id".to_string(),
@@ -175,10 +181,11 @@ mod tests {
         ]);
 
         let sql = "SELECT * FROM raw_table";
-        let result = PolicyRewriter::apply_masking(sql, &node).unwrap();
+        let result = PolicyRewriter::apply_masking(sql, &node)?;
 
         assert!(result.contains("id"));
         assert!(result.contains("regexp_replace(email, '(^.).*(@.*$)', '\\1****\\2') AS email"));
         assert!(result.contains("'REDACTED' AS salary"));
+        Ok(())
     }
 }

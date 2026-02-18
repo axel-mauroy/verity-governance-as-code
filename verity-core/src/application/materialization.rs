@@ -87,6 +87,7 @@ impl Materializer {
 mod tests {
     use super::*;
     use crate::ports::connector::ColumnSchema;
+    use anyhow::Result;
     use async_trait::async_trait;
     use std::sync::{Arc, Mutex};
 
@@ -109,7 +110,7 @@ mod tests {
         async fn execute(&self, query: &str) -> Result<(), VerityError> {
             self.executed_queries
                 .lock()
-                .unwrap()
+                .map_err(|_| VerityError::InternalError("Mutex poisoned".into()))?
                 .push(query.to_string());
             Ok(())
         }
@@ -136,20 +137,19 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_materialize_view_default() {
+    async fn test_materialize_view_default() -> Result<()> {
         let connector = MockConnector::new();
         let config = NodeConfig::default(); // default is None -> View
 
-        let result = Materializer::materialize(&connector, "my_model", "SELECT 1", &config)
-            .await
-            .unwrap();
+        let result = Materializer::materialize(&connector, "my_model", "SELECT 1", &config).await?;
 
         // Non-protected mode delegates to connector.materialize() which returns the type
         assert_eq!(result, "view");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_materialize_table_standard() {
+    async fn test_materialize_table_standard() -> Result<()> {
         let connector = MockConnector::new();
         let config = NodeConfig {
             materialized: Some(MaterializationType::Table),
@@ -158,16 +158,15 @@ mod tests {
         };
 
         let result =
-            Materializer::materialize(&connector, "my_table", "SELECT * FROM src", &config)
-                .await
-                .unwrap();
+            Materializer::materialize(&connector, "my_table", "SELECT * FROM src", &config).await?;
 
         // Non-protected mode delegates to connector.materialize() which returns the type
         assert_eq!(result, "table");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_materialize_table_protected() {
+    async fn test_materialize_table_protected() -> Result<()> {
         let connector = MockConnector::new();
         let config = NodeConfig {
             materialized: Some(MaterializationType::Table),
@@ -177,30 +176,36 @@ mod tests {
 
         let _ = Materializer::materialize(&connector, "prot_table", "SELECT 1", &config).await;
 
-        let queries = connector.executed_queries.lock().unwrap();
+        let queries = connector
+            .executed_queries
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Mutex poisoned"))?;
         assert_eq!(
             queries[0],
             "CREATE TABLE IF NOT EXISTS prot_table AS SELECT 1"
         );
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_materialize_ephemeral() {
+    async fn test_materialize_ephemeral() -> Result<()> {
         let connector = MockConnector::new();
         let config = NodeConfig {
             materialized: Some(MaterializationType::Ephemeral),
             ..Default::default()
         };
 
-        let result = Materializer::materialize(&connector, "eph", "SELECT 1", &config)
-            .await
-            .unwrap();
+        let result = Materializer::materialize(&connector, "eph", "SELECT 1", &config).await?;
 
         assert_eq!(result, "ephemeral");
-        let queries = connector.executed_queries.lock().unwrap();
+        let queries = connector
+            .executed_queries
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Mutex poisoned"))?;
         assert!(
             queries.is_empty(),
             "Ephemeral models should not execute DDL"
         );
+        Ok(())
     }
 }

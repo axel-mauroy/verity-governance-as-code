@@ -1,60 +1,60 @@
 #!/bin/bash
-set -e
+# Verity Local CI - "The Gauntlet"
+set -euo pipefail # -u: erreur si variable non définie, -o pipefail: capture les erreurs dans les pipes
 
-echo "🚀 Starting Full Verification Script (Heavy Duty)..."
+# Couleurs pour le feedback DX
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+NC='\033[0m' # No Color
 
-# Ensure we are at the project root
+echo -e "${GREEN}🚀 Starting Verity Heavy Duty Verification...${NC}"
+
+# Protection : S'assurer qu'on ne run pas ça n'importe où
 cd "$(git rev-parse --show-toplevel)"
 
+# 1. Verification des outils indispensables
+for cmd in cargo-deny cargo-audit; do
+    if ! command -v $cmd &> /dev/null; then
+        echo -e "${RED}❌ Error: $cmd is not installed.${NC} Run: cargo install $cmd"
+        exit 1
+    fi
+done
 
-echo "---------------------------------------------------"
-echo "1️⃣  Format & Lint"
-echo "---------------------------------------------------"
-echo "🎨 Running cargo fmt..."
+echo "--- 1️⃣ Quality Gate ---"
 cargo fmt --all -- --check
-echo "📎 Running clippy..."
-cargo clippy --workspace -- -D warnings
+# Utilisation de --all-targets pour clippy pour inclure les tests et benchmarks
+cargo clippy --workspace --all-targets -- -D warnings
 
-echo "---------------------------------------------------"
-echo "2️⃣  Unit & Integration Tests"
-echo "---------------------------------------------------"
-echo "🧪 Running cargo test..."
-cargo test --workspace
+echo "--- 2️⃣ Security Gate ---"
+cargo deny check
+cargo audit
+# On réactive ton hook de sécurité
+chmod +x .github/hooks/deny_unsecure.sh
+./.github/hooks/deny_unsecure.sh
 
-echo "---------------------------------------------------"
-echo "3️⃣  Security & License"
-echo "---------------------------------------------------"
-if command -v cargo-deny &> /dev/null; then
-    echo "🛡️  Running cargo-deny..."
-    cargo deny check
+echo "--- 3️⃣ Logic Gate ---"
+# Utilisation de nextest si disponible pour plus de rapidité, sinon cargo test
+if command -v cargo-nextest &> /dev/null; then
+    cargo nextest run --workspace
 else
-    echo "⚠️  cargo-deny not found, skipping."
+    cargo test --workspace
 fi
 
-if command -v cargo-audit &> /dev/null; then
-    echo "🛡️  Running cargo-audit..."
-    cargo audit
-else
-    echo "⚠️  cargo-audit not found, skipping (install with 'cargo install cargo-audit')."
-fi
+echo "--- 4️⃣ E2E & Materialization Gate ---"
+# On utilise le profil dev (ou un profil custom 'ci') pour gagner du temps de compilation
+# sauf si tu veux spécifiquement tester la perf des embeddings
+echo "🔨 Compiling Verity CLI..."
+cargo build --bin verity
 
-echo "🛡️  Running Zero-Panic Guard..."
-# ./.github/hooks/deny_unsecure.sh
+VERITY_BIN="$(pwd)/target/debug/verity"
 
-echo "---------------------------------------------------"
-echo "4️⃣  E2E Examples"
-echo "---------------------------------------------------"
-echo "🔨 Building Release Binary..."
-cargo build --release --bin verity
+# Exécution des pipelines d'exemple avec injection d'une DB temporaire
+# pour éviter de corrompre tes données de dev locales
+export VERITY_DATABASE_PATH="/tmp/verity_test_$(date +%s).db"
 
-VERITY_BIN=$(pwd)/target/release/verity
+for example in basic_rag_pipeline ml_pipeline; do
+    echo -e "Testing example: ${GREEN}$example${NC}..."
+    (cd "examples/$example" && "$VERITY_BIN" run)
+done
 
-echo "🚀 Running Basic RAG Pipeline (DuckDB)..."
-(cd examples/basic_rag_pipeline && $VERITY_BIN run)
-
-echo "🚀 Running ML Pipeline (DataFusion)..."
-(cd examples/ml_pipeline && $VERITY_BIN run)
-
-echo "---------------------------------------------------"
-echo "✅ CI Simulation Completed Successfully!"
-echo "---------------------------------------------------"
+echo -e "${GREEN}✅ All systems go. Ready for merge.${NC}"

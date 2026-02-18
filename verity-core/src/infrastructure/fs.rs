@@ -38,34 +38,37 @@ pub fn atomic_write<P: AsRef<Path>, C: AsRef<[u8]>>(
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use anyhow::Result;
     use std::fs;
     use tempfile::tempdir;
 
     #[test]
-    fn test_atomic_write_creates_file() {
-        let dir = tempdir().unwrap();
+    fn test_atomic_write_creates_file() -> Result<()> {
+        let dir = tempdir()?;
         let file_path = dir.path().join("test.txt");
         let content = "Hello, World!";
 
-        atomic_write(&file_path, content).unwrap();
+        atomic_write(&file_path, content)?;
 
         assert!(file_path.exists());
-        let read_content = fs::read_to_string(file_path).unwrap();
+        let read_content = fs::read_to_string(file_path)?;
         assert_eq!(read_content, content);
+        Ok(())
     }
 
     #[test]
-    fn test_atomic_write_overwrites_existing() {
-        let dir = tempdir().unwrap();
+    fn test_atomic_write_overwrites_existing() -> Result<()> {
+        let dir = tempdir()?;
         let file_path = dir.path().join("test.txt");
 
         // Initial write
-        atomic_write(&file_path, "Initial").unwrap();
+        atomic_write(&file_path, "Initial")?;
 
         // Overwrite
-        atomic_write(&file_path, "Updated").unwrap();
+        atomic_write(&file_path, "Updated")?;
 
-        let read_content = fs::read_to_string(file_path).unwrap();
+        let read_content = fs::read_to_string(file_path)?;
         assert_eq!(read_content, "Updated");
+        Ok(())
     }
 }

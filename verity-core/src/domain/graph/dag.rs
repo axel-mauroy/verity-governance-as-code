@@ -91,6 +91,7 @@ impl GraphSolver {
 mod tests {
     use super::*;
     use crate::domain::project::{Manifest, ManifestNode, NodeConfig, ResourceType};
+    use anyhow::Result;
     use std::collections::HashMap;
 
     fn create_mock_node(name: &str, refs: Vec<&str>) -> ManifestNode {
@@ -103,12 +104,13 @@ mod tests {
             refs: refs.iter().map(|s| s.to_string()).collect(),
             config: NodeConfig::default(),
             columns: vec![],
+            security_level: Default::default(),
             compliance: None,
         }
     }
 
     #[test]
-    fn test_dag_linear() {
+    fn test_dag_linear() -> Result<()> {
         // A -> B -> C (C depends on B, B depends on A)
         let mut nodes = HashMap::new();
         nodes.insert("model_a".to_string(), create_mock_node("model_a", vec![]));
@@ -127,7 +129,7 @@ mod tests {
             sources: HashMap::new(),
         };
 
-        let plan = GraphSolver::plan_execution(&manifest).unwrap();
+        let plan = GraphSolver::plan_execution(&manifest)?;
         // A (no deps) -> Layer 0
         // B (deps on A) -> Layer 1
         // C (deps on B) -> Layer 2
@@ -135,6 +137,7 @@ mod tests {
         assert!(plan[0].contains(&"model_a".to_string()));
         assert!(plan[1].contains(&"model_b".to_string()));
         assert!(plan[2].contains(&"model_c".to_string()));
+        Ok(())
     }
 
     #[test]

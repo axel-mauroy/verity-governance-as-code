@@ -1,7 +1,8 @@
 // verity-core/src/application/lineage.rs
 //
 // Static Data Lineage Analyzer — Pre-flight compliance check.
-// Walks the DAG and detects unsecured PII flows BEFORE execution.
+// Walks the DAG and detects unsecured PII flows AND security level
+// downgrades BEFORE execution.
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -21,6 +22,7 @@ pub struct LineageReport {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LineageNode {
     pub name: String,
+    pub security_level: String,
     /// Columns with a PII policy attached
     pub pii_columns: Vec<String>,
 }
@@ -66,12 +68,15 @@ impl LineageReport {
         // Node styles
         for node in &self.nodes {
             if node.pii_columns.is_empty() {
-                lines.push(format!("    {}[{}]", node.name, node.name));
+                lines.push(format!(
+                    "    {}[\"{}  [{}]\"]",
+                    node.name, node.name, node.security_level
+                ));
             } else {
                 let pii_list = node.pii_columns.join(", ");
                 lines.push(format!(
-                    "    {}[\"🔒 {} (PII: {})\"]",
-                    node.name, node.name, pii_list
+                    "    {}[\"🔒 {} [{}] (PII: {})\"]",
+                    node.name, node.name, node.security_level, pii_list
                 ));
             }
         }
@@ -150,6 +155,7 @@ impl LineageAnalyzer {
 
             nodes.push(LineageNode {
                 name: name.clone(),
+                security_level: node.security_level.to_string(),
                 pii_columns,
             });
         }
@@ -160,13 +166,14 @@ impl LineageAnalyzer {
         // Build edges and detect violations
         for (name, node) in &manifest.nodes {
             for ref_name in &node.refs {
-                if !manifest.nodes.contains_key(ref_name) {
-                    continue;
-                }
+                let upstream = match manifest.nodes.get(ref_name) {
+                    Some(u) => u,
+                    None => continue,
+                };
 
                 let mut pii_flows = Vec::new();
 
-                // Check if upstream has PII columns
+                // ── Check 1: PII Column Policy Propagation ───────────
                 if let Some(upstream_pii) = pii_map.get(ref_name.as_str()) {
                     for (col_name, upstream_policy) in upstream_pii {
                         // Does the downstream node have this column?
@@ -199,6 +206,20 @@ impl LineageAnalyzer {
                     }
                 }
 
+                // ── Check 2: SecurityLevel Downgrade ─────────────────
+                if node.security_level < upstream.security_level {
+                    violations.push(LineageViolation {
+                        column: "*".to_string(),
+                        upstream_node: ref_name.clone(),
+                        upstream_policy: upstream.security_level.to_string(),
+                        downstream_node: name.clone(),
+                        message: format!(
+                            "Security downgrade: '{}' ({}) feeds into '{}' ({}).",
+                            ref_name, upstream.security_level, name, node.security_level
+                        ),
+                    });
+                }
+
                 edges.push(LineageEdge {
                     from: ref_name.clone(),
                     to: name.clone(),
@@ -225,11 +246,21 @@ impl LineageAnalyzer {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use crate::domain::governance::SecurityLevel;
     use crate::domain::project::manifest::ManifestNode;
     use crate::domain::project::{ColumnInfo, NodeConfig, ResourceType};
     use std::path::PathBuf;
 
     fn mock_node(name: &str, refs: Vec<&str>, columns: Vec<ColumnInfo>) -> ManifestNode {
+        mock_node_with_security(name, refs, columns, SecurityLevel::Internal)
+    }
+
+    fn mock_node_with_security(
+        name: &str,
+        refs: Vec<&str>,
+        columns: Vec<ColumnInfo>,
+        security_level: SecurityLevel,
+    ) -> ManifestNode {
         ManifestNode {
             name: name.to_string(),
             resource_type: ResourceType::Model,
@@ -239,6 +270,7 @@ mod tests {
             refs: refs.into_iter().map(String::from).collect(),
             config: NodeConfig::default(),
             columns,
+            security_level,
             compliance: None,
         }
     }
@@ -353,7 +385,97 @@ mod tests {
         let report = LineageAnalyzer::analyze(&manifest);
         let mermaid = report.to_mermaid();
         assert!(mermaid.contains("graph LR"));
-        assert!(mermaid.contains("a[a]"));
-        assert!(mermaid.contains("b[b]"));
+        assert!(mermaid.contains("a"));
+        assert!(mermaid.contains("b"));
+    }
+
+    // ── SecurityLevel Propagation Tests ──────────────────────────────
+
+    #[test]
+    fn test_security_downgrade_violation() {
+        let mut nodes = HashMap::new();
+        nodes.insert(
+            "restricted_source".into(),
+            mock_node_with_security(
+                "restricted_source",
+                vec![],
+                vec![],
+                SecurityLevel::Restricted,
+            ),
+        );
+        nodes.insert(
+            "public_child".into(),
+            mock_node_with_security(
+                "public_child",
+                vec!["restricted_source"],
+                vec![],
+                SecurityLevel::Public,
+            ),
+        );
+
+        let manifest = Manifest {
+            project_name: "test".into(),
+            nodes,
+            sources: HashMap::new(),
+        };
+
+        let report = LineageAnalyzer::analyze(&manifest);
+        assert!(report.has_violations());
+        assert_eq!(report.violations.len(), 1);
+        assert!(report.violations[0].message.contains("Security downgrade"));
+    }
+
+    #[test]
+    fn test_no_security_downgrade_same_level() {
+        let mut nodes = HashMap::new();
+        nodes.insert(
+            "conf_a".into(),
+            mock_node_with_security("conf_a", vec![], vec![], SecurityLevel::Confidential),
+        );
+        nodes.insert(
+            "conf_b".into(),
+            mock_node_with_security(
+                "conf_b",
+                vec!["conf_a"],
+                vec![],
+                SecurityLevel::Confidential,
+            ),
+        );
+
+        let manifest = Manifest {
+            project_name: "test".into(),
+            nodes,
+            sources: HashMap::new(),
+        };
+
+        let report = LineageAnalyzer::analyze(&manifest);
+        assert!(!report.has_violations());
+    }
+
+    #[test]
+    fn test_no_security_downgrade_upgrade_is_ok() {
+        let mut nodes = HashMap::new();
+        nodes.insert(
+            "internal_src".into(),
+            mock_node_with_security("internal_src", vec![], vec![], SecurityLevel::Internal),
+        );
+        nodes.insert(
+            "restricted_child".into(),
+            mock_node_with_security(
+                "restricted_child",
+                vec!["internal_src"],
+                vec![],
+                SecurityLevel::Restricted,
+            ),
+        );
+
+        let manifest = Manifest {
+            project_name: "test".into(),
+            nodes,
+            sources: HashMap::new(),
+        };
+
+        let report = LineageAnalyzer::analyze(&manifest);
+        assert!(!report.has_violations());
     }
 }

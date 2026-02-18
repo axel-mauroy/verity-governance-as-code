@@ -5,6 +5,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::Context;
 use verity_core::application::run_pipeline;
 use verity_core::domain::project::Engine;
 use verity_core::infrastructure::adapters::datafusion::DataFusionConnector;
@@ -20,7 +21,12 @@ pub async fn execute(project_dir: PathBuf, select: Option<String>) -> anyhow::Re
 
     // A. Load the Config (Infra)
     println!("⚙️  Loading configuration...");
-    let config = load_project_config(&project_dir)?;
+    let config = load_project_config(&project_dir).with_context(|| {
+        format!(
+            "Failed to load project configuration from {:?}",
+            project_dir
+        )
+    })?;
     println!("   Project: {} (v{})", config.name, config.version);
 
     // B. Instantiate the DB Adapter based on engine config
@@ -28,12 +34,20 @@ pub async fn execute(project_dir: PathBuf, select: Option<String>) -> anyhow::Re
         Engine::DuckDB => {
             println!("   Engine: DuckDB 🦆");
             let db_path = "verity_db.duckdb";
-            Box::new(DuckDBConnector::new(db_path)?)
+            Box::new(
+                DuckDBConnector::new(db_path)
+                    .with_context(|| format!("Failed to initialize DuckDB at {}", db_path))?,
+            )
         }
         Engine::DataFusion => {
             println!("   Engine: Apache DataFusion 🏹");
             let target_dir = project_dir.join(&config.target_path);
-            Box::new(DataFusionConnector::new(&target_dir)?)
+            Box::new(DataFusionConnector::new(&target_dir).with_context(|| {
+                format!(
+                    "Failed to initialize DataFusion with target dir {:?}",
+                    target_dir
+                )
+            })?)
         }
     };
 

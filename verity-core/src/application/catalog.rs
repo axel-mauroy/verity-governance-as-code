@@ -5,6 +5,7 @@ use std::path::Path;
 
 use crate::domain::project::manifest::{Manifest, ResourceType};
 use crate::error::VerityError;
+use anyhow::Context;
 
 // --- DTOs (Data Transfer Objects) ---
 // Those structures define exactly what the UI will display.
@@ -185,17 +186,18 @@ impl CatalogGenerator {
         // 4. Write the JSON (Catalog API)
         let json_path = target_dir.join("catalog.json");
         let json_content = serde_json::to_string_pretty(&artifact)
+            .context("Failed to serialize catalog to JSON")
             .map_err(|e| VerityError::InternalError(e.to_string()))?;
-        crate::infrastructure::fs::atomic_write(&json_path, &json_content).map_err(|e| {
-            VerityError::InternalError(format!("Failed to write catalog.json: {}", e))
-        })?;
+        crate::infrastructure::fs::atomic_write(&json_path, &json_content)
+            .with_context(|| format!("Failed to write catalog.json to {:?}", json_path))
+            .map_err(|e| VerityError::InternalError(e.to_string()))?;
 
         // 5. Generate the HTML (Single File App)
         let html_path = target_dir.join("index.html");
         let html_content = render_html_template(&json_content);
-        crate::infrastructure::fs::atomic_write(&html_path, html_content).map_err(|e| {
-            VerityError::InternalError(format!("Failed to write index.html: {}", e))
-        })?;
+        crate::infrastructure::fs::atomic_write(&html_path, html_content)
+            .with_context(|| format!("Failed to write index.html to {:?}", html_path))
+            .map_err(|e| VerityError::InternalError(e.to_string()))?;
 
         println!("✨ Catalog generated at: {}", html_path.display());
         Ok(html_path.to_string_lossy().to_string())

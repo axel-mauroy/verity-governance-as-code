@@ -109,6 +109,7 @@ mod tests {
     use super::*;
     use crate::domain::project::{ColumnInfo, NodeConfig, ResourceType};
     use crate::ports::connector::ColumnSchema;
+    use anyhow::Result;
     use async_trait::async_trait;
     use std::path::PathBuf;
     use std::sync::{Arc, Mutex};
@@ -141,7 +142,7 @@ mod tests {
         async fn execute(&self, query: &str) -> Result<(), VerityError> {
             self.executed_queries
                 .lock()
-                .unwrap()
+                .map_err(|_| VerityError::InternalError("Mutex poisoned".into()))?
                 .push(query.to_string());
             Ok(())
         }
@@ -177,6 +178,7 @@ mod tests {
             refs: vec![],
             config: NodeConfig::default(),
             columns,
+            security_level: Default::default(),
             compliance: None, // Added compliance field
         }
     }
@@ -192,12 +194,13 @@ mod tests {
             refs: vec![],
             config: Default::default(),
             columns: vec![],
+            security_level: Default::default(),
             compliance: None,
         };
     }
 
     #[tokio::test]
-    async fn test_run_tests_not_null_unique() {
+    async fn test_run_tests_not_null_unique() -> Result<()> {
         let node = create_manifest_node(
             "users",
             vec![ColumnInfo {
@@ -215,15 +218,19 @@ mod tests {
 
         let result = run_tests(&node, &connector_passing_struct).await;
         assert!(result.is_ok());
-        let undocumented = result.unwrap();
+        let undocumented = result.map_err(|_| anyhow::anyhow!("run_tests failed"))?;
         assert!(undocumented.is_empty());
 
-        let queries = connector_passing_struct.executed_queries.lock().unwrap();
+        let queries = connector_passing_struct
+            .executed_queries
+            .lock()
+            .map_err(|_| anyhow::anyhow!("Mutex poisoned"))?;
         assert_eq!(queries.len(), 2);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_validate_structure_undocumented() {
+    async fn test_validate_structure_undocumented() -> Result<()> {
         let node = create_manifest_node(
             "users",
             vec![ColumnInfo {
@@ -248,8 +255,9 @@ mod tests {
 
         let result = run_tests(&node, &connector_extra).await;
         assert!(result.is_ok());
-        let undocumented = result.unwrap();
+        let undocumented = result.map_err(|_| anyhow::anyhow!("run_tests failed"))?;
         assert_eq!(undocumented.len(), 1);
         assert!(undocumented.contains("email"));
+        Ok(())
     }
 }

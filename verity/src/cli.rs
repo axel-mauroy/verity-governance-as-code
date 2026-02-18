@@ -104,9 +104,11 @@ pub enum Commands {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::{Result, bail};
+    use clap::Parser;
 
     #[test]
-    fn test_cli_parse_run_defaults() {
+    fn test_cli_parse_run_defaults() -> Result<()> {
         let args = Cli::parse_from(["verity", "run"]);
         match args.command {
             Commands::Run {
@@ -115,13 +117,14 @@ mod tests {
             } => {
                 assert_eq!(project_dir.to_string_lossy(), ".");
                 assert_eq!(select, None);
+                Ok(())
             }
-            _ => panic!("Expected Run command"),
+            _ => bail!("Expected Run command"),
         }
     }
 
     #[test]
-    fn test_cli_parse_run_select() {
+    fn test_cli_parse_run_select() -> Result<()> {
         let args = Cli::parse_from([
             "verity",
             "run",
@@ -137,24 +140,26 @@ mod tests {
             } => {
                 assert_eq!(project_dir.to_string_lossy(), "/tmp");
                 assert_eq!(select, Some("my_model".to_string()));
+                Ok(())
             }
-            _ => panic!("Expected Run command"),
+            _ => bail!("Expected Run command"),
         }
     }
 
     #[test]
-    fn test_cli_parse_generate() {
+    fn test_cli_parse_generate() -> Result<()> {
         let args = Cli::parse_from(["verity", "generate", "--pii"]);
         match args.command {
             Commands::Generate { pii, owner: _, .. } => {
                 assert!(pii);
+                Ok(())
             }
-            _ => panic!("Expected Generate command"),
+            _ => bail!("Expected Generate command"),
         }
     }
 
     #[test]
-    fn test_cli_parse_inspect() {
+    fn test_cli_parse_inspect() -> Result<()> {
         let args = Cli::parse_from(["verity", "inspect", "--table", "users", "--limit", "10"]);
         match args.command {
             Commands::Inspect {
@@ -165,8 +170,9 @@ mod tests {
                 assert_eq!(table, "users");
                 assert_eq!(limit, 10);
                 assert_eq!(db_path, "verity_db.duckdb");
+                Ok(())
             }
-            _ => panic!("Expected Inspect command"),
+            _ => bail!("Expected Inspect command"),
         }
     }
 }

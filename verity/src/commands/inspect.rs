@@ -22,9 +22,8 @@ pub fn execute(db_path: String, table: String, limit: usize) -> anyhow::Result<(
     let mut stmt_cols = conn.prepare(&format!("PRAGMA table_info({})", table))?;
 
     let column_names: Vec<String> = stmt_cols
-        .query_map([], |row: &Row| row.get(1))?
-        .map(|r| r.unwrap_or_else(|_| "UNKNOWN".to_string()))
-        .collect();
+        .query_map([], |row: &Row| row.get::<_, String>(1))?
+        .collect::<Result<Vec<_>, _>>()?;
 
     println!("   Columns: [{}]", column_names.join(", "));
     println!("   --- Rows (Limit {}) ---", limit);

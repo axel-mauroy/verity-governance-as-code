@@ -93,8 +93,9 @@ impl GovernanceGuard {
 mod tests {
     use super::*;
     use crate::domain::governance::pii::{PiiAction, PiiConfig, PiiPattern, PiiSeverity};
+    use anyhow::{Result, bail};
 
-    fn create_test_scanner(action: PiiAction) -> PiiScanner {
+    fn create_test_scanner(action: PiiAction) -> Result<PiiScanner> {
         let config = PiiConfig {
             enabled: true,
             column_policies: vec![],
@@ -106,12 +107,12 @@ mod tests {
                 masking_strategy: None,
             }],
         };
-        PiiScanner::new(&config).unwrap()
+        Ok(PiiScanner::new(&config)?)
     }
 
     #[test]
-    fn test_audit_data_block() {
-        let scanner = create_test_scanner(PiiAction::Block);
+    fn test_audit_data_block() -> Result<()> {
+        let scanner = create_test_scanner(PiiAction::Block)?;
         let guard = GovernanceGuard::new(scanner, true);
 
         let result = guard.audit_data("This contains a SECRET value", "test_context");
@@ -119,26 +120,26 @@ mod tests {
         match result {
             Err(DomainError::GovernanceViolation { _asset_name, .. }) => {
                 assert_eq!(_asset_name, "test_context");
+                Ok(())
             }
-            _ => panic!("Expected GovernanceViolation"),
+            _ => bail!("Expected GovernanceViolation"),
         }
     }
 
     #[test]
-    fn test_audit_data_warn() {
-        let scanner = create_test_scanner(PiiAction::Warn);
+    fn test_audit_data_warn() -> Result<()> {
+        let scanner = create_test_scanner(PiiAction::Warn)?;
         let guard = GovernanceGuard::new(scanner, true);
 
         // Should print warning to stderr but return Ok
         let result = guard.audit_data("This contains a SECRET value", "test_context");
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[test]
-    fn test_security_boundary_violation() {
-        let scanner = create_test_scanner(PiiAction::Warn); // Action doesn't matter for this test directly, 
-        // but we construct violations manually below usually.
-        // However, validate_security_boundary takes violations slice.
+    fn test_security_boundary_violation() -> Result<()> {
+        let scanner = create_test_scanner(PiiAction::Warn)?;
         let guard = GovernanceGuard::new(scanner, true);
 
         let violations = vec![Violation {
@@ -150,32 +151,34 @@ mod tests {
 
         let result = guard.validate_security_boundary(&SecurityLevel::Public, &violations);
         assert!(result.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_security_boundary_compliant() {
-        let scanner = create_test_scanner(PiiAction::Warn);
+    fn test_security_boundary_compliant() -> Result<()> {
+        let scanner = create_test_scanner(PiiAction::Warn)?;
         let guard = GovernanceGuard::new(scanner, true);
 
         let violations = vec![Violation {
             rule_name: "LowRule".into(),
-            severity: PiiSeverity::Low, // Low severity is allowed in public?
-            // Implementation says: if matches!(High | Critical) -> Err
+            severity: PiiSeverity::Low,
             action: PiiAction::Warn,
             matched_value: "val".into(),
         }];
 
         let result = guard.validate_security_boundary(&SecurityLevel::Public, &violations);
         assert!(result.is_ok());
+        Ok(())
     }
     #[test]
-    fn test_audit_data_block_bypass() {
-        let scanner = create_test_scanner(PiiAction::Block);
+    fn test_audit_data_block_bypass() -> Result<()> {
+        let scanner = create_test_scanner(PiiAction::Block)?;
         // strict_mode = false
         let guard = GovernanceGuard::new(scanner, false);
 
         let result = guard.audit_data("This contains a SECRET value", "test_context");
         // Should be Ok because strict_mode is false, even if Action is Block
         assert!(result.is_ok());
+        Ok(())
     }
 }

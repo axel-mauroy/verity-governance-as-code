@@ -1,5 +1,6 @@
 // verity-core/src/infrastructure/config/project.rs
 
+use anyhow::Context;
 use serde::{Deserialize, de::DeserializeOwned};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -20,9 +21,10 @@ pub fn load_project_config(project_dir: &Path) -> Result<ProjectConfig, Infrastr
     info!(path = ?config_path, "Loading project manifest");
 
     // 2. Chargement YAML Base
-    let content = fs::read_to_string(&config_path).map_err(InfrastructureError::Io)?;
-    let mut config: ProjectConfig =
-        serde_yaml::from_str(&content).map_err(InfrastructureError::YamlError)?;
+    let content = fs::read_to_string(&config_path)
+        .with_context(|| format!("Failed to read project config at {:?}", config_path))?;
+    let mut config: ProjectConfig = serde_yaml::from_str(&content)
+        .with_context(|| format!("Failed to parse project config YAML at {:?}", config_path))?;
 
     // 3. Hydratation des Satellites (Fail-Secure)
     if let Some(config_folder) = config.config_paths.first() {
@@ -60,12 +62,11 @@ fn find_main_config(root: &Path) -> Result<PathBuf, InfrastructureError> {
 /// Charge un fragment de configuration typé depuis un fichier.
 /// T est le type de la struct Wrapper attendue dans le fichier.
 fn load_fragment<T: DeserializeOwned>(path: &Path) -> Result<T, InfrastructureError> {
-    let content = fs::read_to_string(path).map_err(InfrastructureError::Io)?;
-    serde_yaml::from_str(&content).map_err(|e| {
-        // On enrichit l'erreur avec le nom du fichier pour le debug
-        InfrastructureError::YamlError(e)
-        // Note: Idéalement créer une variante YamlFileError(path, error)
-    })
+    let content = fs::read_to_string(path)
+        .with_context(|| format!("Failed to read config fragment at {:?}", path))?;
+    serde_yaml::from_str(&content)
+        .with_context(|| format!("Failed to parse YAML fragment at {:?}", path))
+        .map_err(Into::into)
 }
 
 fn load_satellite_configs(

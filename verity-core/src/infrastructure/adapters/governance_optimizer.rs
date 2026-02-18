@@ -146,6 +146,7 @@ impl AnalyzerRule for GovernanceRule {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use anyhow::Result;
     use datafusion::arrow::util::display::array_value_to_string;
     use datafusion::prelude::SessionContext;
     use std::sync::Arc;
@@ -172,20 +173,18 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_governance_rule_rewrites_projection() {
+    async fn test_governance_rule_rewrites_projection() -> Result<()> {
         let ctx = SessionContext::new();
         ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(make_policies())));
 
         ctx.sql("CREATE TABLE test_users (id INT, email VARCHAR, ssn VARCHAR) AS VALUES (1, 'alice@test.com', '123-45-6789')")
-            .await.unwrap().collect().await.unwrap();
+            .await?.collect().await?;
 
         let batches = ctx
             .sql("SELECT id, email, ssn FROM test_users")
-            .await
-            .unwrap()
+            .await?
             .collect()
-            .await
-            .unwrap();
+            .await?;
 
         let ids = col_values(&batches, 0);
         let emails = col_values(&batches, 1);
@@ -197,36 +196,34 @@ mod tests {
             "email should be masked by SHA-256"
         );
         assert_eq!(ssns, vec!["REDACTED"]);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_governance_rule_passes_through_clean_columns() {
+    async fn test_governance_rule_passes_through_clean_columns() -> Result<()> {
         let ctx = SessionContext::new();
 
         let empty_policies = GovernancePolicySet::new();
         ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(empty_policies)));
 
         ctx.sql("CREATE TABLE clean (id INT, name VARCHAR) AS VALUES (1, 'Alice')")
-            .await
-            .unwrap()
+            .await?
             .collect()
-            .await
-            .unwrap();
+            .await?;
 
         let batches = ctx
             .sql("SELECT id, name FROM clean")
-            .await
-            .unwrap()
+            .await?
             .collect()
-            .await
-            .unwrap();
+            .await?;
 
         let names = col_values(&batches, 1);
         assert_eq!(names, vec!["Alice"], "clean columns should be unchanged");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_redact_policy_replaces_value() {
+    async fn test_redact_policy_replaces_value() -> Result<()> {
         let ctx = SessionContext::new();
 
         let policies =
@@ -234,26 +231,23 @@ mod tests {
         ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(policies)));
 
         ctx.sql("CREATE TABLE secrets (id INT, secret VARCHAR) AS VALUES (1, 'top_secret_data')")
-            .await
-            .unwrap()
+            .await?
             .collect()
-            .await
-            .unwrap();
+            .await?;
 
         let batches = ctx
             .sql("SELECT id, secret FROM secrets")
-            .await
-            .unwrap()
+            .await?
             .collect()
-            .await
-            .unwrap();
+            .await?;
 
         let secrets = col_values(&batches, 1);
         assert_eq!(secrets, vec!["REDACTED"]);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_hash_with_salt() {
+    async fn test_hash_with_salt() -> Result<()> {
         let ctx = SessionContext::new();
 
         let mut policies =
@@ -263,22 +257,19 @@ mod tests {
         ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(policies)));
 
         ctx.sql("CREATE TABLE salted (id INT, email VARCHAR) AS VALUES (1, 'alice@test.com')")
-            .await
-            .unwrap()
+            .await?
             .collect()
-            .await
-            .unwrap();
+            .await?;
 
         let batches = ctx
             .sql("SELECT id, email FROM salted")
-            .await
-            .unwrap()
+            .await?
             .collect()
-            .await
-            .unwrap();
+            .await?;
 
         let emails = col_values(&batches, 1);
         assert_ne!(emails[0], "alice@test.com", "email should be hashed");
         assert!(!emails[0].is_empty(), "hashed value should not be empty");
+        Ok(())
     }
 }

@@ -4,6 +4,8 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use crate::domain::governance::SecurityLevel;
+
 /// The Manifest represents the complete and resolved state of the Verity project.
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Manifest {
@@ -39,6 +41,9 @@ pub struct ManifestNode {
 
     #[serde(default)]
     pub columns: Vec<ColumnInfo>,
+
+    #[serde(default)]
+    pub security_level: SecurityLevel,
 
     #[serde(skip_serializing_if = "Option::is_none")]
     pub compliance: Option<crate::domain::compliance::config::ComplianceConfig>,
@@ -116,9 +121,10 @@ pub struct ColumnInfo {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use anyhow::Result;
 
     #[test]
-    fn test_manifest_deserialization() {
+    fn test_manifest_deserialization() -> Result<()> {
         let json_data = r#"
         {
             "project_name": "demo_project",
@@ -141,26 +147,31 @@ mod tests {
         }
         "#;
 
-        let manifest: Manifest = serde_json::from_str(json_data).expect("Should deserialize");
+        let manifest: Manifest = serde_json::from_str(json_data)?;
 
         assert_eq!(manifest.project_name, "demo_project");
-        let node = manifest.nodes.get("model_a").expect("Node should exist");
+        let node = manifest
+            .nodes
+            .get("model_a")
+            .ok_or_else(|| anyhow::anyhow!("Node should exist"))?;
         assert_eq!(node.resource_type, ResourceType::Model);
         assert_eq!(node.config.materialized, Some(MaterializationType::Table));
         assert!(node.config.protected);
         assert_eq!(node.columns.len(), 1);
         assert_eq!(node.columns[0].name, "id");
+        Ok(())
     }
 
     #[test]
-    fn test_default_values() {
+    fn test_default_values() -> Result<()> {
         let json_data = r#"
         {
             "project_name": "defaults",
             "nodes": {}
         }
         "#;
-        let manifest: Manifest = serde_json::from_str(json_data).unwrap();
+        let manifest: Manifest = serde_json::from_str(json_data)?;
         assert!(manifest.sources.is_empty());
+        Ok(())
     }
 }

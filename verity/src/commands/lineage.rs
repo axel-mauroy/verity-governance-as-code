@@ -53,20 +53,17 @@ pub fn execute(project_dir: PathBuf, check: bool, format: String) -> anyhow::Res
     println!("   Edges: {}", report.edges.len());
 
     if report.has_violations() {
-        eprintln!(
-            "\n⚠️  {} PII violation(s) detected:",
-            report.violations.len()
-        );
+        eprintln!("\n⚠️  {} violation(s) detected:", report.violations.len());
         for v in &report.violations {
             eprintln!("   ❌ {}", v.message);
         }
 
         if check {
-            eprintln!("\n💥 --check mode: Failing due to unsecured PII flows.");
+            eprintln!("\n💥 --check mode: Failing due to compliance violations.");
             std::process::exit(1);
         }
     } else {
-        println!("   ✅ No unsecured PII flows detected.");
+        println!("   ✅ No compliance violations detected.");
     }
 
     Ok(())

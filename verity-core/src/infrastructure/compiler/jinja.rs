@@ -74,33 +74,35 @@ impl<'a> TemplateEngine for JinjaRenderer<'a> {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use anyhow::Result;
 
     #[test]
-    fn test_jinja_render_basic() {
+    fn test_jinja_render_basic() -> Result<()> {
         let renderer = JinjaRenderer::new();
-        let result = renderer
-            .render("SELECT * FROM {{ table }}", "test")
-            .unwrap();
+        let result = renderer.render("SELECT * FROM {{ table }}", "test")?;
         // Note: we passed empty context &() in impl, so variables won't work unless we change impl.
         // But the current implementation passes &().
         // Let's check what functions work.
         assert_eq!(result, "SELECT * FROM "); // undefined variable evaluates to empty/error depending on config?
         // With default minijinja, undefined might be empty string.
+        Ok(())
     }
 
     #[test]
-    fn test_jinja_render_source() {
+    fn test_jinja_render_source() -> Result<()> {
         let renderer = JinjaRenderer::new();
         let template = "SELECT * FROM {{ source('shopify', 'orders') }}";
-        let result = renderer.render(template, "test").unwrap();
+        let result = renderer.render(template, "test")?;
         assert_eq!(result, "SELECT * FROM \"shopify_orders\"");
+        Ok(())
     }
 
     #[test]
-    fn test_jinja_render_ref() {
+    fn test_jinja_render_ref() -> Result<()> {
         let renderer = JinjaRenderer::new();
         let template = "SELECT * FROM {{ ref('stg_users') }}";
-        let result = renderer.render(template, "test").unwrap();
+        let result = renderer.render(template, "test")?;
         assert_eq!(result, "SELECT * FROM \"stg_users\"");
+        Ok(())
     }
 }

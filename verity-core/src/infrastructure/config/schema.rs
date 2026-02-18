@@ -12,6 +12,7 @@ use crate::domain::error::DomainError;
 use crate::domain::governance::ColumnPolicy;
 use crate::domain::ports::SchemaSource;
 use crate::infrastructure::error::InfrastructureError;
+use anyhow::Context;
 
 pub struct SchemaAdapter;
 
@@ -152,8 +153,10 @@ pub fn create_versioned_model(
 
     // 1. Chargement de l'existant (ou création à vide)
     let mut schema_file = if yaml_path.exists() {
-        let content = fs::read_to_string(&yaml_path).map_err(InfrastructureError::Io)?;
-        serde_yaml::from_str::<SchemaFile>(&content).map_err(InfrastructureError::YamlError)?
+        let content = fs::read_to_string(&yaml_path)
+            .with_context(|| format!("Failed to read schema YAML at {:?}", yaml_path))?;
+        serde_yaml::from_str::<SchemaFile>(&content)
+            .with_context(|| format!("Failed to parse schema YAML at {:?}", yaml_path))?
     } else {
         SchemaFile::default()
     };
@@ -252,9 +255,10 @@ pub fn update_model_columns(
         return Ok(false);
     }
 
-    let content = fs::read_to_string(schema_path).map_err(InfrastructureError::Io)?;
-    let mut schema_file: SchemaFile =
-        serde_yaml::from_str(&content).map_err(InfrastructureError::YamlError)?;
+    let content = fs::read_to_string(schema_path)
+        .with_context(|| format!("Failed to read schema file at {:?}", schema_path))?;
+    let mut schema_file: SchemaFile = serde_yaml::from_str(&content)
+        .with_context(|| format!("Failed to parse schema YAML at {:?}", schema_path))?;
 
     let mut file_changed = false;
 
@@ -406,6 +410,7 @@ fn detect_tech_owner() -> Option<String> {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use anyhow::{Result, bail};
     use std::fs;
     use tempfile::tempdir;
 
@@ -416,9 +421,13 @@ mod tests {
         }]
     }
 
-    fn manual_update_status(path: &Path, model_name: &str, new_status: LifecycleStatus) {
-        let content = fs::read_to_string(path).unwrap();
-        let mut schema: SchemaFile = serde_yaml::from_str(&content).unwrap();
+    fn manual_update_status(
+        path: &Path,
+        model_name: &str,
+        new_status: LifecycleStatus,
+    ) -> Result<()> {
+        let content = fs::read_to_string(path)?;
+        let mut schema: SchemaFile = serde_yaml::from_str(&content)?;
         if let Some(model) = schema
             .models
             .iter_mut()
@@ -426,13 +435,14 @@ mod tests {
         {
             model.config.status = new_status;
         }
-        let new_content = serde_yaml::to_string(&schema).unwrap();
-        fs::write(path, new_content).unwrap();
+        let new_content = serde_yaml::to_string(&schema)?;
+        fs::write(path, new_content)?;
+        Ok(())
     }
 
     #[test]
-    fn test_lifecycle_happy_path_provisioning() {
-        let dir = tempdir().unwrap();
+    fn test_lifecycle_happy_path_provisioning() -> Result<()> {
+        let dir = tempdir()?;
         let sql_path = dir.path().join("stg_users.sql");
         let base_name = "stg_users";
         let cols = vec!["id".to_string(), "email".to_string()];
@@ -445,8 +455,7 @@ mod tests {
             &cols,
             &mock_policies(),
             Some(LifecycleStatus::Active),
-        )
-        .unwrap();
+        )?;
 
         // 2. Création V2 (Provisioning) -> OK
         create_versioned_model(
@@ -456,11 +465,10 @@ mod tests {
             &cols,
             &mock_policies(),
             Some(LifecycleStatus::Provisioning),
-        )
-        .unwrap();
+        )?;
 
-        let content = fs::read_to_string(sql_path.with_extension("yml")).unwrap();
-        let schema: SchemaFile = serde_yaml::from_str(&content).unwrap();
+        let content = fs::read_to_string(sql_path.with_extension("yml"))?;
+        let schema: SchemaFile = serde_yaml::from_str(&content)?;
 
         assert_eq!(schema.models.len(), 2);
         assert_eq!(schema.models[0].config.status, LifecycleStatus::Active);
@@ -470,11 +478,12 @@ mod tests {
         );
         assert!(schema.models[1].config.latest);
         assert!(!schema.models[0].config.latest);
+        Ok(())
     }
 
     #[test]
-    fn test_lifecycle_block_double_active() {
-        let dir = tempdir().unwrap();
+    fn test_lifecycle_block_double_active() -> Result<()> {
+        let dir = tempdir()?;
         let sql_path = dir.path().join("stg_sales.sql");
         let base_name = "stg_sales";
         let cols = vec!["amount".to_string()];
@@ -486,8 +495,7 @@ mod tests {
             &cols,
             &mock_policies(),
             Some(LifecycleStatus::Active),
-        )
-        .unwrap();
+        )?;
 
         let result = create_versioned_model(
             &sql_path,
@@ -499,29 +507,31 @@ mod tests {
         );
 
         assert!(result.is_err());
-        match result.unwrap_err() {
-            InfrastructureError::ConfigError(msg) => {
-                assert!(msg.contains("Version 1 is still 'active'"))
+        match result {
+            Err(InfrastructureError::ConfigError(msg)) => {
+                assert!(msg.contains("Version 1 is still 'active'"));
+                Ok(())
             }
-            _ => panic!("Expected ConfigError"),
+            _ => bail!("Expected ConfigError"),
         }
     }
 
     #[test]
-    fn test_sequence_continuity_guard() {
-        let dir = tempdir().unwrap();
+    fn test_sequence_continuity_guard() -> Result<()> {
+        let dir = tempdir()?;
         let sql_path = dir.path().join("stg_gl.sql");
 
-        create_versioned_model(&sql_path, "stg_gl", 1, &[], &mock_policies(), None).unwrap();
+        create_versioned_model(&sql_path, "stg_gl", 1, &[], &mock_policies(), None)?;
 
         // Skip v2 -> Error
         let result = create_versioned_model(&sql_path, "stg_gl", 3, &[], &mock_policies(), None);
         assert!(result.is_err());
+        Ok(())
     }
 
     #[test]
-    fn test_transition_active_to_deprecated_allows_new_active() {
-        let dir = tempdir().unwrap();
+    fn test_transition_active_to_deprecated_allows_new_active() -> Result<()> {
+        let dir = tempdir()?;
         let sql_path = dir.path().join("stg_churn.sql");
         let yaml_path = sql_path.with_extension("yml");
 
@@ -532,9 +542,8 @@ mod tests {
             &[],
             &mock_policies(),
             Some(LifecycleStatus::Active),
-        )
-        .unwrap();
-        manual_update_status(&yaml_path, "stg_churn", LifecycleStatus::Deprecated);
+        )?;
+        manual_update_status(&yaml_path, "stg_churn", LifecycleStatus::Deprecated)?;
 
         let result = create_versioned_model(
             &sql_path,
@@ -545,14 +554,16 @@ mod tests {
             Some(LifecycleStatus::Active),
         );
         assert!(result.is_ok());
+        Ok(())
     }
 
     #[test]
-    fn test_prevent_duplicate_version() {
-        let dir = tempdir().unwrap();
+    fn test_prevent_duplicate_version() -> Result<()> {
+        let dir = tempdir()?;
         let sql_path = dir.path().join("dup.sql");
-        create_versioned_model(&sql_path, "dup", 1, &[], &mock_policies(), None).unwrap();
+        create_versioned_model(&sql_path, "dup", 1, &[], &mock_policies(), None)?;
         let result = create_versioned_model(&sql_path, "dup", 1, &[], &mock_policies(), None);
         assert!(result.is_err());
+        Ok(())
     }
 }

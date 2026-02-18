@@ -57,6 +57,9 @@ pub enum InfrastructureError {
         help("Check your Jinja syntax ({{ ... }}) inside the SQL file.")
     )]
     TemplateError(#[from] minijinja::Error),
+
+    #[error(transparent)]
+    Anyhow(#[from] anyhow::Error),
 }
 
 // Manual implementation for shortcuts (e.g. `?` operator on duckdb calls)

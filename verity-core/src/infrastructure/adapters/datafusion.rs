@@ -216,74 +216,69 @@ impl Connector for DataFusionConnector {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use anyhow::Result;
 
     #[tokio::test]
-    async fn test_datafusion_execution_and_schema() {
-        let tmp = tempfile::tempdir().expect("Failed to create temp dir");
-        let connector =
-            DataFusionConnector::new(tmp.path()).expect("Failed to create DataFusion connector");
+    async fn test_datafusion_execution_and_schema() -> Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let connector = DataFusionConnector::new(tmp.path())?;
 
         // Create a table via SQL
         connector
             .execute("CREATE TABLE test_users (id INT, name VARCHAR, age INT) AS VALUES (1, 'Alice', 30), (2, 'Bob', 25)")
-            .await
-            .expect("Failed to create table");
+            .await?;
 
         // Verify Schema
-        let columns = connector
-            .fetch_columns("test_users")
-            .await
-            .expect("Failed to fetch columns");
+        let columns = connector.fetch_columns("test_users").await?;
 
         assert_eq!(columns.len(), 3);
 
         let name_col = columns
             .iter()
             .find(|c| c.name == "name")
-            .expect("Column 'name' not found");
+            .ok_or_else(|| anyhow::anyhow!("Column 'name' not found"))?;
         assert_eq!(name_col.data_type, "Utf8View");
 
         let id_col = columns
             .iter()
             .find(|c| c.name == "id")
-            .expect("Column 'id' not found");
+            .ok_or_else(|| anyhow::anyhow!("Column 'id' not found"))?;
         assert_eq!(id_col.data_type, "Int32");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_datafusion_query_scalar() {
-        let tmp = tempfile::tempdir().expect("Failed to create temp dir");
-        let connector =
-            DataFusionConnector::new(tmp.path()).expect("Failed to create DataFusion connector");
+    async fn test_datafusion_query_scalar() -> Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let connector = DataFusionConnector::new(tmp.path())?;
 
         connector
             .execute("CREATE TABLE counts (id INT) AS VALUES (1), (2), (3)")
-            .await
-            .expect("Failed to create table");
+            .await?;
 
         let count = connector
             .query_scalar("SELECT count(*) FROM counts")
-            .await
-            .expect("Failed to query scalar");
+            .await?;
 
         assert_eq!(count, 3);
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_datafusion_error() {
-        let tmp = tempfile::tempdir().expect("Failed to create temp dir");
-        let connector =
-            DataFusionConnector::new(tmp.path()).expect("Failed to create DataFusion connector");
+    async fn test_datafusion_error() -> Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let connector = DataFusionConnector::new(tmp.path())?;
 
         let result = connector.execute("SELECT * FROM non_existent_table").await;
         assert!(result.is_err());
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_datafusion_engine_name() {
-        let tmp = tempfile::tempdir().expect("Failed to create temp dir");
-        let connector =
-            DataFusionConnector::new(tmp.path()).expect("Failed to create DataFusion connector");
+    async fn test_datafusion_engine_name() -> Result<()> {
+        let tmp = tempfile::tempdir()?;
+        let connector = DataFusionConnector::new(tmp.path())?;
         assert_eq!(connector.engine_name(), "datafusion");
+        Ok(())
     }
 }

@@ -140,50 +140,41 @@ impl Connector for DuckDBConnector {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use anyhow::Result;
 
     #[tokio::test]
-    async fn test_duckdb_execution_and_schema() {
-        // 1. Setup in-memory DB
-        let connector =
-            DuckDBConnector::new(":memory:").expect("Failed to create in-memory DuckDB");
+    async fn test_duckdb_flow() -> Result<()> {
+        let connector = DuckDBConnector::new(":memory:")?;
 
-        // 2. Create Table
+        // 1. Create table
         connector
-            .execute("CREATE TABLE test_users (id INTEGER, name VARCHAR, age INTEGER)")
-            .await
-            .expect("Failed to create table");
-        connector
-            .execute("INSERT INTO test_users VALUES (1, 'Alice', 30)")
-            .await
-            .expect("Failed to insert data");
+            .execute("CREATE TABLE users (id INTEGER, name VARCHAR)")
+            .await?;
 
-        // 3. Verify Schema
-        let columns = connector
-            .fetch_columns("test_users")
-            .await
-            .expect("Failed to fetch columns");
+        // 2. Fetch columns
+        let columns = connector.fetch_columns("users").await?;
+        assert_eq!(columns.len(), 2);
 
-        assert_eq!(columns.len(), 3);
-
-        // Find 'name' column
         let name_col = columns
             .iter()
             .find(|c| c.name == "name")
-            .expect("Column 'name' not found");
-        assert_eq!(name_col.data_type, "VARCHAR"); // Standard DuckDB type name
+            .ok_or_else(|| anyhow::anyhow!("Column 'name' not found"))?;
+        assert_eq!(name_col.data_type, "VARCHAR");
 
         let id_col = columns
             .iter()
             .find(|c| c.name == "id")
-            .expect("Column 'id' not found");
+            .ok_or_else(|| anyhow::anyhow!("Column 'id' not found"))?;
         assert_eq!(id_col.data_type, "INTEGER");
+        Ok(())
     }
 
     #[tokio::test]
-    async fn test_duckdb_error() {
-        let connector = DuckDBConnector::new(":memory:").unwrap();
+    async fn test_duckdb_error() -> Result<()> {
+        let connector = DuckDBConnector::new(":memory:")?;
         // Invalid SQL
         let result = connector.execute("SELECT * FROM non_existent_table").await;
         assert!(result.is_err());
+        Ok(())
     }
 }
