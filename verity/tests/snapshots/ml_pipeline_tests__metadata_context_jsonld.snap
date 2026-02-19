@@ -1,13 +1,14 @@
 ---
 source: verity/tests/ml_pipeline_tests.rs
+assertion_line: 186
 expression: content
 ---
 {
   "@context": {
-    "verity": "https://verity.ai/ns/",
-    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
     "dcat": "http://www.w3.org/ns/dcat#",
-    "prov": "http://www.w3.org/ns/prov#"
+    "prov": "http://www.w3.org/ns/prov#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+    "verity": "https://verity.ai/ns/"
   },
   "@graph": [
     {
@@ -22,8 +23,7 @@ expression: content
       "verity:columns": [
         {
           "@type": "verity:Column",
-          "name": "email_hash",
-          "policy": "pii_masking"
+          "name": "email_hash"
         },
         {
           "@type": "verity:Column",
@@ -48,65 +48,34 @@ expression: content
       ]
     },
     {
-      "@id": "verity:stg_model_metadata",
+      "@id": "verity:feat_user_engagement",
       "@type": "dcat:Dataset",
-      "rdfs:label": "stg_model_metadata",
+      "rdfs:label": "feat_user_engagement",
       "verity:resourceType": "Model",
+      "prov:wasDerivedFrom": [
+        "verity:stg_activity"
+      ],
       "verity:securityLevel": "Internal",
       "verity:columns": [
-        {
-          "@type": "verity:Column",
-          "name": "model_id"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "version"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "algorithm"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "created_at"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "hyperparameters"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "created_by",
-          "policy": "pii_masking"
-        }
-      ]
-    },
-    {
-      "@id": "verity:stg_activity",
-      "@type": "dcat:Dataset",
-      "rdfs:label": "stg_activity",
-      "verity:resourceType": "Model",
-      "verity:securityLevel": "Internal",
-      "verity:columns": [
-        {
-          "@type": "verity:Column",
-          "name": "activity_id"
-        },
         {
           "@type": "verity:Column",
           "name": "user_id"
         },
         {
           "@type": "verity:Column",
-          "name": "activity_type"
+          "name": "last_active_at"
         },
         {
           "@type": "verity:Column",
-          "name": "duration_sec"
+          "name": "api_usage_count"
         },
         {
           "@type": "verity:Column",
-          "name": "activity_at"
+          "name": "avg_session_duration"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "total_sessions"
         }
       ]
     },
@@ -147,6 +116,69 @@ expression: content
       ]
     },
     {
+      "@id": "verity:stg_activity",
+      "@type": "dcat:Dataset",
+      "rdfs:label": "stg_activity",
+      "verity:resourceType": "Model",
+      "verity:securityLevel": "Internal",
+      "verity:columns": [
+        {
+          "@type": "verity:Column",
+          "name": "activity_id"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "user_id"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "activity_type"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "duration_sec"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "activity_at"
+        }
+      ]
+    },
+    {
+      "@id": "verity:stg_model_metadata",
+      "@type": "dcat:Dataset",
+      "rdfs:label": "stg_model_metadata",
+      "verity:resourceType": "Model",
+      "verity:securityLevel": "Internal",
+      "verity:columns": [
+        {
+          "@type": "verity:Column",
+          "name": "model_id"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "version"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "algorithm"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "created_at"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "hyperparameters"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "created_by",
+          "policy": "pii_masking"
+        }
+      ]
+    },
+    {
       "@id": "verity:stg_predictions",
       "@type": "dcat:Dataset",
       "rdfs:label": "stg_predictions",
@@ -172,52 +204,6 @@ expression: content
         {
           "@type": "verity:Column",
           "name": "user_id"
-        }
-      ]
-    },
-    {
-      "@id": "verity:train_churn_dataset_v1",
-      "@type": "dcat:Dataset",
-      "rdfs:label": "train_churn_dataset_v1",
-      "verity:resourceType": "Model",
-      "prov:wasDerivedFrom": [
-        "verity:feat_user_engagement",
-        "verity:feat_user_demographics_masked",
-        "verity:stg_predictions"
-      ],
-      "verity:securityLevel": "Internal",
-      "verity:columns": [
-        {
-          "@type": "verity:Column",
-          "name": "api_usage_count"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "subscription_tier"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "region"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "avg_session_duration"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "target_churn"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "total_sessions"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "user_id"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "signup_date"
         }
       ]
     },
@@ -257,26 +243,28 @@ expression: content
       ]
     },
     {
-      "@id": "verity:feat_user_engagement",
+      "@id": "verity:train_churn_dataset_v1",
       "@type": "dcat:Dataset",
-      "rdfs:label": "feat_user_engagement",
+      "rdfs:label": "train_churn_dataset_v1",
       "verity:resourceType": "Model",
       "prov:wasDerivedFrom": [
-        "verity:stg_activity"
+        "verity:feat_user_demographics_masked",
+        "verity:feat_user_engagement",
+        "verity:stg_predictions"
       ],
       "verity:securityLevel": "Internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
-          "name": "user_id"
-        },
-        {
-          "@type": "verity:Column",
-          "name": "last_active_at"
-        },
-        {
-          "@type": "verity:Column",
           "name": "api_usage_count"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "subscription_tier"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "region"
         },
         {
           "@type": "verity:Column",
@@ -284,7 +272,19 @@ expression: content
         },
         {
           "@type": "verity:Column",
+          "name": "target_churn"
+        },
+        {
+          "@type": "verity:Column",
           "name": "total_sessions"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "user_id"
+        },
+        {
+          "@type": "verity:Column",
+          "name": "signup_date"
         }
       ]
     }

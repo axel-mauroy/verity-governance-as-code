@@ -95,7 +95,10 @@ impl Connector for DataFusionConnector {
         Ok(())
     }
 
-    async fn fetch_sample(&self, query: &str) -> Result<Vec<datafusion::arrow::record_batch::RecordBatch>, VerityError> {
+    async fn fetch_sample(
+        &self,
+        query: &str,
+    ) -> Result<Vec<datafusion::arrow::record_batch::RecordBatch>, VerityError> {
         let ctx = self.ctx.lock().await;
         let df = ctx.sql(query).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))

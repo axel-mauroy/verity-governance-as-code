@@ -2,13 +2,13 @@
 
 pub mod governance_rule;
 pub mod guard;
+pub mod linter;
 pub mod pii;
 pub mod quality;
 pub mod rewriter;
 pub mod scanner;
 pub mod security_level;
 pub mod semantic;
-pub mod linter;
 
 // Re-exports
 pub use guard::GovernanceGuard;

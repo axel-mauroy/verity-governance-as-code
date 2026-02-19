@@ -30,9 +30,8 @@ impl UniversalQuoter {
     }
 
     fn process_statement(stmt: &mut Statement) {
-        match stmt {
-            Statement::Query(query) => Self::process_query(query),
-            _ => {}
+        if let Statement::Query(query) = stmt {
+            Self::process_query(query);
         }
     }
 
@@ -50,14 +49,13 @@ impl UniversalQuoter {
         Self::process_set_expr(&mut query.body);
 
         // 3. Gérer Order By
-        if let Some(order_by) = &mut query.order_by {
-            match &mut order_by.kind {
-                sqlparser::ast::OrderByKind::Expressions(exprs) => {
-                    for ob in exprs {
-                        Self::process_expr(&mut ob.expr);
-                    }
-                }
-                _ => {}
+        if let Some(sqlparser::ast::OrderBy {
+            kind: sqlparser::ast::OrderByKind::Expressions(exprs),
+            ..
+        }) = &mut query.order_by
+        {
+            for ob in exprs {
+                Self::process_expr(&mut ob.expr);
             }
         }
 
@@ -241,21 +239,18 @@ impl UniversalQuoter {
 
         // CORRECTION: Valid naming parts
         for part in name.0.iter_mut() {
-            match part {
-                ObjectNamePart::Identifier(ident) => {
-                    let val_upper = ident.value.to_uppercase();
+            if let ObjectNamePart::Identifier(ident) = part {
+                let val_upper = ident.value.to_uppercase();
 
-                    // Ne jamais citer si déjà cité ou si fonction native
-                    if ident.quote_style.is_none()
-                        && !sql_builtin_functions.contains(&val_upper.as_str())
-                    {
-                        // Ne pas citer les wildcards
-                        if !["*"].contains(&val_upper.as_str()) {
-                            ident.quote_style = Some('"');
-                        }
+                // Ne jamais citer si déjà cité ou si fonction native
+                if ident.quote_style.is_none()
+                    && !sql_builtin_functions.contains(&val_upper.as_str())
+                {
+                    // Ne pas citer les wildcards
+                    if !["*"].contains(&val_upper.as_str()) {
+                        ident.quote_style = Some('"');
                     }
                 }
-                _ => {}
             }
         }
     }
@@ -414,28 +409,32 @@ impl UniversalQuoter {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use anyhow::Result;
 
     #[test]
-    fn test_quote_identifiers_cte() {
+    fn test_quote_identifiers_cte() -> Result<()> {
         let sql = "WITH cte_a AS (SELECT id FROM raw_t) SELECT id FROM cte_a";
-        let quoted = UniversalQuoter::quote_identifiers(sql).unwrap();
+        let quoted = UniversalQuoter::quote_identifiers(sql)?;
         assert!(quoted.contains("WITH \"cte_a\" AS (SELECT \"id\" FROM \"raw_t\")"));
         assert!(quoted.contains("SELECT \"id\" FROM \"cte_a\""));
+        Ok(())
     }
 
     #[test]
-    fn test_quote_identifiers_builtin_func() {
+    fn test_quote_identifiers_builtin_func() -> Result<()> {
         let sql = "SELECT COUNT(*), UPPER(name) FROM raw_t";
-        let quoted = UniversalQuoter::quote_identifiers(sql).unwrap();
+        let quoted = UniversalQuoter::quote_identifiers(sql)?;
         // COUNT ne doit pas être cité
         assert!(quoted.contains("COUNT(*)"));
         assert!(quoted.contains("UPPER(\"name\")"));
+        Ok(())
     }
 
     #[test]
-    fn test_quote_identifiers_union() {
+    fn test_quote_identifiers_union() -> Result<()> {
         let sql = "SELECT a FROM t1 UNION SELECT a FROM t2";
-        let quoted = UniversalQuoter::quote_identifiers(sql).unwrap();
+        let quoted = UniversalQuoter::quote_identifiers(sql)?;
         assert!(quoted.contains("SELECT \"a\" FROM \"t1\" UNION SELECT \"a\" FROM \"t2\""));
+        Ok(())
     }
 }

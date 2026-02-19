@@ -44,7 +44,7 @@ impl<'a> JinjaRenderer<'a> {
         let tmpl = self
             .env
             .render_str(template_str, ())
-            .map_err(|e| InfrastructureError::TemplateError(e))?;
+            .map_err(InfrastructureError::TemplateError)?;
 
         Ok(tmpl)
     }

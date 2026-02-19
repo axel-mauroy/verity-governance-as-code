@@ -245,10 +245,17 @@ impl GraphDiscovery {
                         // Fuzzy Policy Injection
                         // Check if policy is missing and matches a fuzzy rule
                         if policy.is_none() {
-                            for rule in &project_config.governance.pii_detection.column_policies {
-                                // Compile regex on the fly (performance trade-off for simplicity)
-                                if let Ok(re) = Regex::new(&rule.column_name_pattern) {
-                                    if re.is_match(&c.name) {
+                            let is_meta_column = c.name.ends_with("_pii")
+                                || c.name.ends_with("_masked")
+                                || c.name.ends_with("_hash");
+
+                            if !is_meta_column {
+                                for rule in &project_config.governance.pii_detection.column_policies
+                                {
+                                    // Compile regex on the fly (performance trade-off for simplicity)
+                                    if Regex::new(&rule.column_name_pattern)
+                                        .is_ok_and(|re| re.is_match(&c.name))
+                                    {
                                         // TODO: Environment check if added to ColumnPolicy
                                         policy = Some(rule.policy.clone());
                                         break; // Apply first matching rule

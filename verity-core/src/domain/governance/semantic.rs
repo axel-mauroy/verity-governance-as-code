@@ -1,39 +1,36 @@
-use crate::domain::project::{Manifest, ResourceType};
+use crate::domain::project::{Manifest, ManifestNode, ResourceType};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::BTreeMap;
 
-/// Represents the entire graph in a semantic format (JSON-LD).
-/// This structure is designed to be easily ingested by LLMs or Knowledge Graphs.
+// Utilisation de constantes pour les namespaces fixes (évite les allocations String)
+const NS_VERITY: &str = "https://verity.ai/ns/";
+const NS_DCAT: &str = "http://www.w3.org/ns/dcat#";
+const NS_PROV: &str = "http://www.w3.org/ns/prov#";
+const NS_RDFS: &str = "http://www.w3.org/2000/01/rdf-schema#";
+
 #[derive(Debug, Serialize)]
 pub struct SemanticGraph {
     #[serde(rename = "@context")]
-    pub context: HashMap<String, String>,
+    pub context: BTreeMap<&'static str, &'static str>,
 
     #[serde(rename = "@graph")]
     pub graph: Vec<JsonLdNode>,
 }
 
-/// A single node in the semantic graph (Model, Source, or Column).
 #[derive(Debug, Serialize)]
 pub struct JsonLdNode {
     #[serde(rename = "@id")]
     pub id: String,
-
     #[serde(rename = "@type")]
-    pub type_: String,
-
+    pub type_: &'static str,
     #[serde(rename = "rdfs:label")]
     pub label: String,
-
     #[serde(rename = "verity:resourceType")]
     pub resource_type: String,
-
     #[serde(rename = "prov:wasDerivedFrom", skip_serializing_if = "Vec::is_empty")]
     pub was_derived_from: Vec<String>,
-
     #[serde(rename = "verity:securityLevel")]
     pub security_level: String,
-
     #[serde(rename = "verity:columns", skip_serializing_if = "Vec::is_empty")]
     pub columns: Vec<JsonLdColumn>,
 }
@@ -41,22 +38,25 @@ pub struct JsonLdNode {
 #[derive(Debug, Serialize)]
 pub struct JsonLdColumn {
     #[serde(rename = "@type")]
-    pub type_: String,
+    pub type_: &'static str,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub policy: Option<String>,
 }
 
+impl Default for SemanticGraph {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SemanticGraph {
     pub fn new() -> Self {
-        let mut context = HashMap::new();
-        context.insert("verity".to_string(), "https://verity.ai/ns/".to_string());
-        context.insert("dcat".to_string(), "http://www.w3.org/ns/dcat#".to_string());
-        context.insert("prov".to_string(), "http://www.w3.org/ns/prov#".to_string());
-        context.insert(
-            "rdfs".to_string(),
-            "http://www.w3.org/2000/01/rdf-schema#".to_string(),
-        );
+        let mut context = BTreeMap::new();
+        context.insert("verity", NS_VERITY);
+        context.insert("dcat", NS_DCAT);
+        context.insert("prov", NS_PROV);
+        context.insert("rdfs", NS_RDFS);
 
         Self {
             context,
@@ -67,48 +67,20 @@ impl SemanticGraph {
     pub fn from_manifest(manifest: &Manifest) -> Self {
         let mut semantic_graph = Self::new();
 
-        for (name, node) in &manifest.nodes {
-            if node.resource_type == ResourceType::Test {
-                continue;
-            }
+        // On pré-alloue pour éviter les reallocs sur de gros graphes
+        let mut sorted_nodes: Vec<_> = manifest
+            .nodes
+            .iter()
+            .filter(|(_, n)| n.resource_type != ResourceType::Test)
+            .collect();
 
-            let id = format!("verity:{}", name);
-            let type_ = match node.resource_type {
-                ResourceType::Model => "dcat:Dataset",
-                ResourceType::Source => "dcat:Distribution",
-                ResourceType::Analysis => "verity:Analysis",
-                _ => "verity:Resource",
-            }
-            .to_string();
+        // Tri déterministe
+        sorted_nodes.sort_unstable_by_key(|(name, _)| *name);
 
-            let derived_from = node
-                .refs
-                .iter()
-                .map(|ref_name| format!("verity:{}", ref_name))
-                .collect();
-
-            let columns = node
-                .columns
-                .iter()
-                .map(|c| JsonLdColumn {
-                    type_: "verity:Column".to_string(),
-                    name: c.name.clone(),
-                    policy: c.policy.clone(),
-                })
-                .collect();
-
-            let ld_node = JsonLdNode {
-                id,
-                type_,
-                label: name.clone(),
-                resource_type: format!("{:?}", node.resource_type),
-                was_derived_from: derived_from,
-                security_level: format!("{:?}", node.security_level),
-                columns,
-            };
-
-            semantic_graph.graph.push(ld_node);
-        }
+        semantic_graph.graph = sorted_nodes
+            .into_iter()
+            .map(|(name, node)| JsonLdNode::from_node(name, node))
+            .collect();
 
         semantic_graph
     }
@@ -118,11 +90,47 @@ impl SemanticGraph {
     }
 }
 
+impl JsonLdNode {
+    fn from_node(name: &str, node: &ManifestNode) -> Self {
+        let type_ = match node.resource_type {
+            ResourceType::Model => "dcat:Dataset",
+            ResourceType::Source => "dcat:Distribution",
+            ResourceType::Analysis => "verity:Analysis",
+            _ => "verity:Resource",
+        };
+
+        let mut was_derived_from: Vec<String> =
+            node.refs.iter().map(|r| format!("verity:{}", r)).collect();
+        was_derived_from.sort_unstable(); // Plus rapide que sort() si on se moque de l'ordre relatif des égaux
+
+        let columns = node
+            .columns
+            .iter()
+            .map(|c| JsonLdColumn {
+                type_: "verity:Column",
+                name: c.name.clone(),
+                policy: c.policy.clone(),
+            })
+            .collect();
+
+        Self {
+            id: format!("verity:{}", name),
+            type_,
+            label: name.to_string(),
+            resource_type: format!("{:?}", node.resource_type),
+            was_derived_from,
+            security_level: format!("{:?}", node.security_level),
+            columns,
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::domain::project::{ColumnInfo, ManifestNode, NodeConfig};
     use anyhow::Result;
+    use std::collections::HashMap;
 
     #[test]
     fn test_semantic_graph_generation() -> Result<()> {

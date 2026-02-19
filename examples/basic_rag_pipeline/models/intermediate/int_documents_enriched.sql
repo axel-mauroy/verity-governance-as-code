@@ -28,7 +28,11 @@ final AS (
         CASE 
             WHEN content LIKE '%@%' OR content LIKE '%06%' THEN TRUE
             ELSE FALSE
-        END AS contains_pii
+        END AS contains_pii,
+        CASE
+            WHEN author_email LIKE '%@%' THEN TRUE
+            ELSE FALSE
+        END AS email_pii
     FROM joined
 )
 

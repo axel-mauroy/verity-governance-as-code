@@ -347,9 +347,11 @@ where
     if ctx.strict_mode && node.security_level != crate::domain::governance::SecurityLevel::Public {
         let sample_query = format!("SELECT * FROM ({}) LIMIT 500", compiled_sql);
         if let Ok(sample_batches) = ctx.connector.fetch_sample(&sample_query).await {
-            let linter = crate::domain::governance::GovernanceLinter::new();
+            let linter = crate::domain::governance::GovernanceLinter::new()
+                .map_err(|e| VerityError::InternalError(e.to_string()))?;
             for batch in sample_batches {
-                linter.verify_model_compliance(node, &batch)
+                linter
+                    .verify_model_compliance(node, &batch)
                     .map_err(|e| VerityError::InternalError(e.to_string()))?;
             }
         }

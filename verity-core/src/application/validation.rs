@@ -181,7 +181,8 @@ mod tests {
         ) -> Result<String, VerityError> {
             Ok(materialization_type.to_string())
         }
-        async fn query_scalar(&self, _query: &str) -> Result<u64, VerityError> {
+        async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
+            self.execute(query).await?;
             Ok(0)
         }
         fn engine_name(&self) -> &str {
