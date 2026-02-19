@@ -43,6 +43,7 @@ minijinja = { version = "2.0", features = ["loader"] }
 # --- CLI ---
 clap = { version = "4.5.54", features = ["derive", "env"] }
 comfy-table = "7.2.2"
+sqlparser = "0.59"
 
 # --- INTERNE ---
 verity-core = { path = "./verity-core", version = "0.1.0" }

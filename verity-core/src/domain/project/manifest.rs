@@ -1,4 +1,5 @@
 // verity-core/src/domain/project/manifest.rs
+// Force rebuild 2
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -49,13 +50,31 @@ pub struct ManifestNode {
     pub compliance: Option<crate::domain::compliance::config::ComplianceConfig>,
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq)]
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ResourceType {
+    #[default]
     Model,
     Source,
     Analysis,
     Test,
+}
+
+impl Default for ManifestNode {
+    fn default() -> Self {
+        Self {
+            name: "".to_string(),
+            resource_type: ResourceType::Model,
+            path: PathBuf::new(),
+            schema_path: None,
+            raw_sql: "".to_string(),
+            refs: vec![],
+            config: NodeConfig::default(),
+            columns: vec![],
+            security_level: crate::domain::governance::SecurityLevel::default(),
+            compliance: None,
+        }
+    }
 }
 
 /// Configuration specific to a node.

@@ -300,6 +300,10 @@ where
     // Using simple string as context for now, wrapped in Value
     let context = serde_json::json!({ "model_name": node.name });
     let compiled_sql = ctx.renderer.render(&node.raw_sql, &context)?;
+    
+    // Apply Universal Quoting for engine compatibility
+    let compiled_sql = crate::domain::compiler::quoter::UniversalQuoter::quote_identifiers(&compiled_sql)
+        .map_err(|e| VerityError::InternalError(format!("SQL Quoting failed: {}", e)))?;
 
     let layer = if node.name.starts_with("stg_") {
         "staging"

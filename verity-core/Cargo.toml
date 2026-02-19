@@ -26,3 +26,4 @@ walkdir = { workspace = true }
 minijinja = { workspace = true }
 tracing = { workspace = true }
 tempfile = { workspace = true }
+sqlparser = { workspace = true }

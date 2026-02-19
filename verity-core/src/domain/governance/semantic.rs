@@ -118,7 +118,7 @@ impl SemanticGraph {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::domain::project::{ColumnInfo, NodeConfig};
+    use crate::domain::project::{ColumnInfo, ManifestNode, NodeConfig};
     use anyhow::Result;
 
     #[test]
@@ -129,24 +129,20 @@ mod tests {
             name: "model_a".to_string(),
             resource_type: ResourceType::Model,
             path: "models/a.sql".into(),
-            schema_path: None,
             raw_sql: "SELECT 1".to_string(),
-            refs: vec![],
             config: NodeConfig::default(),
             columns: vec![ColumnInfo {
                 name: "id".to_string(),
                 tests: vec![],
                 policy: None,
             }],
-            security_level: Default::default(),
-            compliance: None,
+            ..Default::default()
         };
 
         let model_b = ManifestNode {
             name: "model_b".to_string(),
             resource_type: ResourceType::Model,
             path: "models/b.sql".into(),
-            schema_path: None,
             raw_sql: "SELECT * FROM model_a".to_string(),
             refs: vec!["model_a".to_string()],
             config: NodeConfig::default(),
@@ -155,8 +151,7 @@ mod tests {
                 tests: vec![],
                 policy: Some("hash".to_string()),
             }],
-            security_level: Default::default(),
-            compliance: None,
+            ..Default::default()
         };
 
         nodes.insert("model_a".to_string(), model_a);
