@@ -53,7 +53,10 @@ impl SemanticGraph {
         context.insert("verity".to_string(), "https://verity.ai/ns/".to_string());
         context.insert("dcat".to_string(), "http://www.w3.org/ns/dcat#".to_string());
         context.insert("prov".to_string(), "http://www.w3.org/ns/prov#".to_string());
-        context.insert("rdfs".to_string(), "http://www.w3.org/2000/01/rdf-schema#".to_string());
+        context.insert(
+            "rdfs".to_string(),
+            "http://www.w3.org/2000/01/rdf-schema#".to_string(),
+        );
 
         Self {
             context,

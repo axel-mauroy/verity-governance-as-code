@@ -27,3 +27,4 @@ schema:
     description: Auto-detected by Verity
   - name: created_by
     description: Auto-detected by Verity
+    policy: pii_masking

@@ -6,6 +6,7 @@
 
 use crate::error::VerityError;
 use async_trait::async_trait;
+use datafusion::arrow::record_batch::RecordBatch;
 
 // Struct simple pour décrire une colonne (indépendant de la DB)
 #[derive(Debug, Clone)]
@@ -17,6 +18,10 @@ pub struct ColumnSchema {
 
 #[async_trait]
 pub trait Connector: Send + Sync {
+    /// Retrieve a data sample as Arrow RecordBatches for dynamic validation.
+    async fn fetch_sample(&self, _query: &str) -> Result<Vec<RecordBatch>, VerityError> {
+        Err(VerityError::InternalError("fetch_sample not implemented for this connector".into()))
+    }
     /// Execute a SQL statement (DDL or DML, no result expected).
     async fn execute(&self, query: &str) -> Result<(), VerityError>;
 

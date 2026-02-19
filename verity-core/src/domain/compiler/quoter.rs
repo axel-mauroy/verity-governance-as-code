@@ -1,7 +1,10 @@
 // verity-core/src/domain/compiler/quoter.rs
+use sqlparser::ast::{
+    Expr, ObjectName, ObjectNamePart, Query, SelectItem, SelectItemQualifiedWildcardKind, SetExpr,
+    Statement, TableFactor,
+};
 use sqlparser::dialect::GenericDialect;
 use sqlparser::parser::Parser;
-use sqlparser::ast::{Statement, Query, SetExpr, SelectItem, TableFactor, Expr, ObjectName, ObjectNamePart, SelectItemQualifiedWildcardKind};
 
 pub struct UniversalQuoter;
 
@@ -17,7 +20,11 @@ impl UniversalQuoter {
             Self::process_statement(stmt);
         }
 
-        let result = transformed_ast.iter().map(|s| s.to_string()).collect::<Vec<_>>().join("; ");
+        let result = transformed_ast
+            .iter()
+            .map(|s| s.to_string())
+            .collect::<Vec<_>>()
+            .join("; ");
         tracing::debug!("Quoted SQL: {}", result);
         Ok(result)
     }
@@ -56,20 +63,20 @@ impl UniversalQuoter {
 
         // 4. Gérer Limit
         if let Some(limit_clause) = &mut query.limit_clause {
-             match limit_clause {
-                 sqlparser::ast::LimitClause::LimitOffset { limit, offset, .. } => {
-                     if let Some(l) = limit {
-                         Self::process_expr(l);
-                     }
-                     if let Some(o) = offset {
-                         Self::process_expr(&mut o.value);
-                     }
-                 },
-                 sqlparser::ast::LimitClause::OffsetCommaLimit { offset, limit } => {
-                     Self::process_expr(offset);
-                     Self::process_expr(limit);
-                 }
-             }
+            match limit_clause {
+                sqlparser::ast::LimitClause::LimitOffset { limit, offset, .. } => {
+                    if let Some(l) = limit {
+                        Self::process_expr(l);
+                    }
+                    if let Some(o) = offset {
+                        Self::process_expr(&mut o.value);
+                    }
+                }
+                sqlparser::ast::LimitClause::OffsetCommaLimit { offset, limit } => {
+                    Self::process_expr(offset);
+                    Self::process_expr(limit);
+                }
+            }
         }
     }
 
@@ -92,18 +99,18 @@ impl UniversalQuoter {
             match item {
                 SelectItem::UnnamedExpr(expr) => {
                     Self::process_expr(expr);
-                },
+                }
                 SelectItem::ExprWithAlias { expr, alias } => {
                     Self::process_expr(expr);
                     // Force le quoting de l'alias : alias -> "alias"
                     alias.quote_style = Some('"');
-                },
-                SelectItem::QualifiedWildcard(kind, _options) => {
-                     match kind {
-                         SelectItemQualifiedWildcardKind::ObjectName(name) => Self::process_object_name(name),
-                         SelectItemQualifiedWildcardKind::Expr(expr) => Self::process_expr(expr),
-                     }
                 }
+                SelectItem::QualifiedWildcard(kind, _options) => match kind {
+                    SelectItemQualifiedWildcardKind::ObjectName(name) => {
+                        Self::process_object_name(name)
+                    }
+                    SelectItemQualifiedWildcardKind::Expr(expr) => Self::process_expr(expr),
+                },
                 _ => {}
             }
         }
@@ -113,34 +120,35 @@ impl UniversalQuoter {
             for join in &mut table.joins {
                 Self::process_table_factor(&mut join.relation);
                 match &mut join.join_operator {
-                    sqlparser::ast::JoinOperator::Join(constraint) |
-                    sqlparser::ast::JoinOperator::Inner(constraint) |
-                    sqlparser::ast::JoinOperator::Left(constraint) |
-                    sqlparser::ast::JoinOperator::LeftOuter(constraint) |
-                    sqlparser::ast::JoinOperator::Right(constraint) |
-                    sqlparser::ast::JoinOperator::RightOuter(constraint) |
-                    sqlparser::ast::JoinOperator::FullOuter(constraint) |
-                    sqlparser::ast::JoinOperator::CrossJoin(constraint) |
-                    sqlparser::ast::JoinOperator::Semi(constraint) |
-                    sqlparser::ast::JoinOperator::LeftSemi(constraint) |
-                    sqlparser::ast::JoinOperator::RightSemi(constraint) |
-                    sqlparser::ast::JoinOperator::Anti(constraint) |
-                    sqlparser::ast::JoinOperator::LeftAnti(constraint) |
-                    sqlparser::ast::JoinOperator::RightAnti(constraint) |
-                    sqlparser::ast::JoinOperator::StraightJoin(constraint) => {
-                        match constraint {
-                            sqlparser::ast::JoinConstraint::On(expr) => Self::process_expr(expr),
-                            sqlparser::ast::JoinConstraint::Using(idents) => {
-                                for ident in idents.iter_mut() {
-                                    Self::process_object_name(ident);
-                                }
+                    sqlparser::ast::JoinOperator::Join(constraint)
+                    | sqlparser::ast::JoinOperator::Inner(constraint)
+                    | sqlparser::ast::JoinOperator::Left(constraint)
+                    | sqlparser::ast::JoinOperator::LeftOuter(constraint)
+                    | sqlparser::ast::JoinOperator::Right(constraint)
+                    | sqlparser::ast::JoinOperator::RightOuter(constraint)
+                    | sqlparser::ast::JoinOperator::FullOuter(constraint)
+                    | sqlparser::ast::JoinOperator::CrossJoin(constraint)
+                    | sqlparser::ast::JoinOperator::Semi(constraint)
+                    | sqlparser::ast::JoinOperator::LeftSemi(constraint)
+                    | sqlparser::ast::JoinOperator::RightSemi(constraint)
+                    | sqlparser::ast::JoinOperator::Anti(constraint)
+                    | sqlparser::ast::JoinOperator::LeftAnti(constraint)
+                    | sqlparser::ast::JoinOperator::RightAnti(constraint)
+                    | sqlparser::ast::JoinOperator::StraightJoin(constraint) => match constraint {
+                        sqlparser::ast::JoinConstraint::On(expr) => Self::process_expr(expr),
+                        sqlparser::ast::JoinConstraint::Using(idents) => {
+                            for ident in idents.iter_mut() {
+                                Self::process_object_name(ident);
                             }
-                            _ => {}
                         }
-                    }
-                    sqlparser::ast::JoinOperator::AsOf { match_condition, constraint } => {
-                         Self::process_expr(match_condition);
-                         match constraint {
+                        _ => {}
+                    },
+                    sqlparser::ast::JoinOperator::AsOf {
+                        match_condition,
+                        constraint,
+                    } => {
+                        Self::process_expr(match_condition);
+                        match constraint {
                             sqlparser::ast::JoinConstraint::On(expr) => Self::process_expr(expr),
                             sqlparser::ast::JoinConstraint::Using(idents) => {
                                 for ident in idents.iter_mut() {
@@ -164,14 +172,14 @@ impl UniversalQuoter {
                 for expr in exprs {
                     Self::process_expr(expr);
                 }
-            },
-            sqlparser::ast::GroupByExpr::All(_) => {},
+            }
+            sqlparser::ast::GroupByExpr::All(_) => {}
         }
 
         if let Some(having) = &mut select.having {
             Self::process_expr(having);
         }
-        
+
         if let Some(qualify) = &mut select.qualify {
             Self::process_expr(qualify);
         }
@@ -185,7 +193,9 @@ impl UniversalQuoter {
                     a.name.quote_style = Some('"');
                 }
             }
-            TableFactor::Derived { subquery, alias, .. } => {
+            TableFactor::Derived {
+                subquery, alias, ..
+            } => {
                 Self::process_query(subquery);
                 if let Some(a) = alias {
                     a.name.quote_style = Some('"');
@@ -198,19 +208,51 @@ impl UniversalQuoter {
     fn process_object_name(name: &mut ObjectName) {
         // Liste d'exclusion pour ne pas citer les fonctions natives ANSI communes
         let sql_builtin_functions = [
-            "COUNT", "SUM", "AVG", "MIN", "MAX", "CAST", "COALESCE", 
-            "NOW", "CURRENT_TIMESTAMP", "CURRENT_DATE", "UPPER", "LOWER",
-            "REPLACE", "REGEXP_REPLACE", "SHA256", "CONCAT", "ABS", "ROUND",
-            "ROW_NUMBER", "RANK", "DENSE_RANK", "LAG", "LEAD", 
-            "FIRST_VALUE", "LAST_VALUE", "NTH_VALUE", "NTILE", "PERCENT_RANK", "CUME_DIST"
+            "COUNT",
+            "SUM",
+            "AVG",
+            "MIN",
+            "MAX",
+            "CAST",
+            "COALESCE",
+            "NOW",
+            "CURRENT_TIMESTAMP",
+            "CURRENT_DATE",
+            "UPPER",
+            "LOWER",
+            "REPLACE",
+            "REGEXP_REPLACE",
+            "SHA256",
+            "CONCAT",
+            "ABS",
+            "ROUND",
+            "ROW_NUMBER",
+            "RANK",
+            "DENSE_RANK",
+            "LAG",
+            "LEAD",
+            "FIRST_VALUE",
+            "LAST_VALUE",
+            "NTH_VALUE",
+            "NTILE",
+            "PERCENT_RANK",
+            "CUME_DIST",
         ];
 
+        // CORRECTION: Valid naming parts
         for part in name.0.iter_mut() {
             match part {
                 ObjectNamePart::Identifier(ident) => {
                     let val_upper = ident.value.to_uppercase();
-                    if !sql_builtin_functions.contains(&val_upper.as_str()) {
-                        ident.quote_style = Some('"');
+
+                    // Ne jamais citer si déjà cité ou si fonction native
+                    if ident.quote_style.is_none()
+                        && !sql_builtin_functions.contains(&val_upper.as_str())
+                    {
+                        // Ne pas citer les wildcards
+                        if !["*"].contains(&val_upper.as_str()) {
+                            ident.quote_style = Some('"');
+                        }
                     }
                 }
                 _ => {}
@@ -236,15 +278,15 @@ impl UniversalQuoter {
                 Self::process_expr(expr.as_mut());
             }
             Expr::Function(func) => {
-                 Self::process_object_name(&mut func.name);
-                 Self::process_function_arguments(&mut func.args);
-                 Self::process_function_arguments(&mut func.parameters);
-                 if let Some(over) = &mut func.over {
-                     Self::process_window_type(over);
-                 }
-                 if let Some(filter) = &mut func.filter {
-                     Self::process_expr(filter.as_mut());
-                 }
+                Self::process_object_name(&mut func.name);
+                Self::process_function_arguments(&mut func.args);
+                Self::process_function_arguments(&mut func.parameters);
+                if let Some(over) = &mut func.over {
+                    Self::process_window_type(over);
+                }
+                if let Some(filter) = &mut func.filter {
+                    Self::process_expr(filter.as_mut());
+                }
             }
             Expr::Cast { expr, .. } => {
                 Self::process_expr(expr.as_mut());
@@ -261,7 +303,12 @@ impl UniversalQuoter {
                     Self::process_expr(item);
                 }
             }
-            Expr::Case { operand, conditions, else_result, .. } => {
+            Expr::Case {
+                operand,
+                conditions,
+                else_result,
+                ..
+            } => {
                 if let Some(op) = operand {
                     Self::process_expr(op.as_mut());
                 }
@@ -283,18 +330,26 @@ impl UniversalQuoter {
             Expr::Subquery(subquery) => {
                 Self::process_query(subquery);
             }
-            Expr::Between { expr, low, high, .. } => {
+            Expr::Between {
+                expr, low, high, ..
+            } => {
                 Self::process_expr(expr.as_mut());
                 Self::process_expr(low.as_mut());
                 Self::process_expr(high.as_mut());
             }
-            Expr::Like { expr, pattern, .. } | Expr::ILike { expr, pattern, .. } | 
-            Expr::RLike { expr, pattern, .. } | Expr::SimilarTo { expr, pattern, .. } => {
+            Expr::Like { expr, pattern, .. }
+            | Expr::ILike { expr, pattern, .. }
+            | Expr::RLike { expr, pattern, .. }
+            | Expr::SimilarTo { expr, pattern, .. } => {
                 Self::process_expr(expr.as_mut());
                 Self::process_expr(pattern.as_mut());
             }
-            Expr::IsFalse(e) | Expr::IsNotFalse(e) | Expr::IsTrue(e) | Expr::IsNotTrue(e) |
-            Expr::IsUnknown(e) | Expr::IsNotUnknown(e) => {
+            Expr::IsFalse(e)
+            | Expr::IsNotFalse(e)
+            | Expr::IsTrue(e)
+            | Expr::IsNotTrue(e)
+            | Expr::IsUnknown(e)
+            | Expr::IsNotUnknown(e) => {
                 Self::process_expr(e.as_mut());
             }
             Expr::IsDistinctFrom(l, r) | Expr::IsNotDistinctFrom(l, r) => {
@@ -332,20 +387,20 @@ impl UniversalQuoter {
                 for arg in &mut list.args {
                     match arg {
                         sqlparser::ast::FunctionArg::Named { arg, .. } => {
-                             if let sqlparser::ast::FunctionArgExpr::Expr(e) = arg {
-                                 Self::process_expr(e);
-                             }
+                            if let sqlparser::ast::FunctionArgExpr::Expr(e) = arg {
+                                Self::process_expr(e);
+                            }
                         }
                         sqlparser::ast::FunctionArg::Unnamed(arg_expr) => {
-                             if let sqlparser::ast::FunctionArgExpr::Expr(e) = arg_expr {
-                                 Self::process_expr(e);
-                             }
+                            if let sqlparser::ast::FunctionArgExpr::Expr(e) = arg_expr {
+                                Self::process_expr(e);
+                            }
                         }
                         sqlparser::ast::FunctionArg::ExprNamed { name, arg, .. } => {
-                             Self::process_expr(name);
-                             if let sqlparser::ast::FunctionArgExpr::Expr(e) = arg {
-                                 Self::process_expr(e);
-                             }
+                            Self::process_expr(name);
+                            if let sqlparser::ast::FunctionArgExpr::Expr(e) = arg {
+                                Self::process_expr(e);
+                            }
                         }
                     }
                 }

@@ -3,9 +3,9 @@
 use std::collections::HashSet;
 
 // Imports Hexagonaux
+use crate::domain::error::DomainError;
 use crate::domain::project::manifest::ManifestNode;
 use crate::error::VerityError;
-use crate::domain::error::DomainError;
 use crate::ports::connector::Connector;
 
 pub async fn run_tests(
@@ -89,12 +89,12 @@ async fn check_not_null(
         "SELECT count(*) FROM \"{}\" WHERE \"{}\" IS NULL",
         table, column
     );
-    
+
     let count = connector.query_scalar(&sql).await?;
-    
+
     if count > 0 {
         return Err(VerityError::Domain(DomainError::ComplianceError(format!(
-            "ASSERTION FAILED: Found {} NULL values in {}.{}", 
+            "ASSERTION FAILED: Found {} NULL values in {}.{}",
             count, table, column
         ))));
     }
@@ -112,12 +112,12 @@ async fn check_unique(
         "SELECT count(*) FROM (SELECT \"{}\" FROM \"{}\" GROUP BY \"{}\" HAVING count(*) > 1) as duplicates",
         column, table, column
     );
-    
+
     let count = connector.query_scalar(&sql).await?;
-    
+
     if count > 0 {
-         return Err(VerityError::Domain(DomainError::ComplianceError(format!(
-            "ASSERTION FAILED: Found {} DUPLICATE values in {}.{}", 
+        return Err(VerityError::Domain(DomainError::ComplianceError(format!(
+            "ASSERTION FAILED: Found {} DUPLICATE values in {}.{}",
             count, table, column
         ))));
     }

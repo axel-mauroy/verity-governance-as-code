@@ -51,7 +51,8 @@ impl GovernanceRule {
         match &expr {
             Expr::Column(col) => {
                 let col_name = col.name().to_lowercase();
-                if let Some(policy) = self.policies.get(&col_name) {
+                let col_name_clean = col_name.trim_matches('"');
+                if let Some(policy) = self.policies.get(col_name_clean) {
                     self.apply_policy(&expr, col.name(), policy)
                 } else {
                     expr
@@ -62,7 +63,8 @@ impl GovernanceRule {
                 match &inner {
                     Expr::Column(col) => {
                         let col_name = col.name().to_lowercase();
-                        if let Some(policy) = self.policies.get(&col_name) {
+                        let col_name_clean = col_name.trim_matches('"');
+                        if let Some(policy) = self.policies.get(col_name_clean) {
                             self.apply_policy(&inner, &alias.name, policy)
                         } else {
                             expr

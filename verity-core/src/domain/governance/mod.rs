@@ -8,9 +8,11 @@ pub mod rewriter;
 pub mod scanner;
 pub mod security_level;
 pub mod semantic;
+pub mod linter;
 
 // Re-exports
 pub use guard::GovernanceGuard;
+pub use linter::GovernanceLinter;
 pub use pii::{ColumnPolicy, PiiAction, PiiConfig, PiiPattern, PiiSeverity};
 pub mod configuration;
 pub use configuration::GovernanceConfig;

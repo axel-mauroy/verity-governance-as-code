@@ -13,6 +13,9 @@ use crate::infrastructure::adapters::governance_optimizer::GovernanceRule;
 use crate::infrastructure::error::{DatabaseError, InfrastructureError};
 use crate::ports::connector::{ColumnSchema, Connector};
 
+use datafusion::arrow::datatypes::DataType;
+use datafusion::logical_expr::{Volatility, create_udf};
+
 pub struct DataFusionConnector {
     ctx: Arc<Mutex<SessionContext>>,
     target_dir: PathBuf,
@@ -21,10 +24,48 @@ pub struct DataFusionConnector {
 impl DataFusionConnector {
     pub fn new(target_dir: &Path) -> Result<Self, InfrastructureError> {
         let ctx = SessionContext::new();
+        Self::register_error_udf(&ctx);
         Ok(Self {
             ctx: Arc::new(Mutex::new(ctx)),
             target_dir: target_dir.to_path_buf(),
         })
+    }
+
+    /// Register a custom UDF 'error(msg)' that panics the execution plan.
+    /// This is used by data quality tests to abort the pipeline.
+    fn register_error_udf(ctx: &SessionContext) {
+        use datafusion::logical_expr::ColumnarValue;
+        use datafusion::scalar::ScalarValue;
+
+        let error_func = Arc::new(|args: &[ColumnarValue]| {
+            let arg = &args[0];
+
+            let msg = match arg {
+                ColumnarValue::Array(arr) => arr
+                    .as_any()
+                    .downcast_ref::<datafusion::arrow::array::StringArray>()
+                    .map(|a| a.value(0).to_string())
+                    .unwrap_or_else(|| "Unknown Data Quality Error".to_string()),
+                ColumnarValue::Scalar(scalar) => match scalar {
+                    ScalarValue::Utf8(Some(s)) => s.clone(),
+                    ScalarValue::LargeUtf8(Some(s)) => s.clone(),
+                    ScalarValue::Utf8View(Some(s)) => s.clone(),
+                    _ => "Unknown Data Quality Error".to_string(),
+                },
+            };
+
+            Err(datafusion::error::DataFusionError::Execution(msg))
+        });
+
+        let udf = create_udf(
+            "error",
+            vec![DataType::Utf8],
+            DataType::Int64,
+            Volatility::Immutable,
+            error_func,
+        );
+
+        ctx.register_udf(udf);
     }
 
     /// Register governance masking rules as a DataFusion optimizer rule.
@@ -52,6 +93,16 @@ impl Connector for DataFusionConnector {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
         Ok(())
+    }
+
+    async fn fetch_sample(&self, query: &str) -> Result<Vec<datafusion::arrow::record_batch::RecordBatch>, VerityError> {
+        let ctx = self.ctx.lock().await;
+        let df = ctx.sql(query).await.map_err(|e| {
+            VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
+        })?;
+        df.collect().await.map_err(|e| {
+            VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
+        })
     }
 
     async fn fetch_columns(&self, table_name: &str) -> Result<Vec<ColumnSchema>, VerityError> {
@@ -96,18 +147,20 @@ impl Connector for DataFusionConnector {
 
         match materialization_type {
             "view" => {
-                // DataFusion supports CREATE OR REPLACE VIEW natively
-                let ddl = format!("CREATE OR REPLACE VIEW \"{}\" AS {}", table_name, sql);
-                let df = ctx.sql(&ddl).await.map_err(|e| {
+                // CORRECTION: Use DataFrame API to register view programmatically
+                // instead of raw SQL DDL, to avoid double-quoting issues with UniversalQuoter
+                let df = ctx.sql(sql).await.map_err(|e| {
                     VerityError::Infrastructure(InfrastructureError::Database(
                         DatabaseError::DataFusion(e),
                     ))
                 })?;
-                df.collect().await.map_err(|e| {
-                    VerityError::Infrastructure(InfrastructureError::Database(
-                        DatabaseError::DataFusion(e),
-                    ))
-                })?;
+
+                ctx.register_table(table_name, df.into_view())
+                    .map_err(|e| {
+                        VerityError::Infrastructure(InfrastructureError::Database(
+                            DatabaseError::DataFusion(e),
+                        ))
+                    })?;
             }
             "table" => {
                 // DataFusion: execute the SQL query, then write results to Parquet
@@ -184,8 +237,12 @@ impl Connector for DataFusionConnector {
         let col = batch.column(0);
 
         // Try to extract as various integer types that DataFusion might return
-        use datafusion::arrow::array::{Int64Array, UInt64Array};
+        // CORRECTION: Add Int32 support which is common for small counts
+        use datafusion::arrow::array::{Int32Array, Int64Array, UInt64Array};
+
         if let Some(arr) = col.as_any().downcast_ref::<Int64Array>() {
+            Ok(arr.value(0) as u64)
+        } else if let Some(arr) = col.as_any().downcast_ref::<Int32Array>() {
             Ok(arr.value(0) as u64)
         } else if let Some(arr) = col.as_any().downcast_ref::<UInt64Array>() {
             Ok(arr.value(0))

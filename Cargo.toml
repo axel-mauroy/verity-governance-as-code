@@ -45,20 +45,31 @@ clap = { version = "4.5.54", features = ["derive", "env"] }
 comfy-table = "7.2.2"
 sqlparser = "0.59"
 
+# --- TESTING ---
+assert_cmd = "2.1.2"
+predicates = "3.1.4"
+fs_extra = "1.3.0"
+insta = { version = "1.46.3", features = ["yaml"] }
+
 # --- INTERNE ---
 verity-core = { path = "./verity-core", version = "0.1.0" }
 verity-connectors = { path = "./verity-connectors", version = "0.1.0" }
 
 # --- PROFILS ---
-[profile.dev]
+[profile.dev] # (cargo build / cargo run)
 opt-level = 0
 debug = true
+incremental = true 
 split-debuginfo = "unpacked"
 
-[profile.release]
+[profile.dev.package."*"]
+opt-level = 2           # Optimizing external libs as much as possible (DataFusion, Arrow)
+
+[profile.release] # (cargo build --release)
 opt-level = 3
-lto = "fat"
-codegen-units = 1
+lto = "thin"
+# lto = "fat"
+codegen-units = 16
 panic = "abort"
 strip = "symbols"
 

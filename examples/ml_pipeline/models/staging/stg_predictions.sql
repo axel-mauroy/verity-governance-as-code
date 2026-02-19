@@ -12,6 +12,6 @@ SELECT
     prediction_id,
     model_id,
     user_id,
-    arrow_cast(churn_probability, 'Float64') as churn_probability,
+    CAST(churn_probability AS DOUBLE) as churn_probability,
     CAST(prediction_date AS DATE) as prediction_date
 FROM {{ source('raw', 'predictions') }}

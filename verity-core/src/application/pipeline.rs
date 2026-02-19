@@ -300,10 +300,11 @@ where
     // Using simple string as context for now, wrapped in Value
     let context = serde_json::json!({ "model_name": node.name });
     let compiled_sql = ctx.renderer.render(&node.raw_sql, &context)?;
-    
+
     // Apply Universal Quoting for engine compatibility
-    let compiled_sql = crate::domain::compiler::quoter::UniversalQuoter::quote_identifiers(&compiled_sql)
-        .map_err(|e| VerityError::InternalError(format!("SQL Quoting failed: {}", e)))?;
+    let compiled_sql =
+        crate::domain::compiler::quoter::UniversalQuoter::quote_identifiers(&compiled_sql)
+            .map_err(|e| VerityError::InternalError(format!("SQL Quoting failed: {}", e)))?;
 
     let layer = if node.name.starts_with("stg_") {
         "staging"
@@ -341,6 +342,18 @@ where
         run_path.join(format!("{}.sql", node.name)),
         &secured_sql,
     )?;
+
+    // B.5 Pre-flight Governance Linter (Zero-Trust execution)
+    if ctx.strict_mode && node.security_level != crate::domain::governance::SecurityLevel::Public {
+        let sample_query = format!("SELECT * FROM ({}) LIMIT 500", compiled_sql);
+        if let Ok(sample_batches) = ctx.connector.fetch_sample(&sample_query).await {
+            let linter = crate::domain::governance::GovernanceLinter::new();
+            for batch in sample_batches {
+                linter.verify_model_compliance(node, &batch)
+                    .map_err(|e| VerityError::InternalError(e.to_string()))?;
+            }
+        }
+    }
 
     // C. Matérialisation
     let strategy_used =

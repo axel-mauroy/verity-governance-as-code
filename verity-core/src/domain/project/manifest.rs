@@ -50,6 +50,14 @@ pub struct ManifestNode {
     pub compliance: Option<crate::domain::compliance::config::ComplianceConfig>,
 }
 
+impl ManifestNode {
+    pub fn is_flagged_as_pii(&self, col_name: &str) -> bool {
+        self.columns
+            .iter()
+            .any(|c| c.name == col_name && c.policy.as_deref() == Some("pii_masking"))
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum ResourceType {
