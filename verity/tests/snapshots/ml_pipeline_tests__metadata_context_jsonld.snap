@@ -1,6 +1,5 @@
 ---
 source: verity/tests/ml_pipeline_tests.rs
-assertion_line: 186
 expression: content
 ---
 {
@@ -15,11 +14,11 @@ expression: content
       "@id": "verity:feat_user_demographics_masked",
       "@type": "dcat:Dataset",
       "rdfs:label": "feat_user_demographics_masked",
-      "verity:resourceType": "Model",
+      "verity:resourceType": "model",
       "prov:wasDerivedFrom": [
         "verity:stg_users"
       ],
-      "verity:securityLevel": "Internal",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
@@ -51,11 +50,11 @@ expression: content
       "@id": "verity:feat_user_engagement",
       "@type": "dcat:Dataset",
       "rdfs:label": "feat_user_engagement",
-      "verity:resourceType": "Model",
+      "verity:resourceType": "model",
       "prov:wasDerivedFrom": [
         "verity:stg_activity"
       ],
-      "verity:securityLevel": "Internal",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
@@ -83,11 +82,11 @@ expression: content
       "@id": "verity:mon_prediction_drift",
       "@type": "dcat:Dataset",
       "rdfs:label": "mon_prediction_drift",
-      "verity:resourceType": "Model",
+      "verity:resourceType": "model",
       "prov:wasDerivedFrom": [
         "verity:stg_predictions"
       ],
-      "verity:securityLevel": "Internal",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
@@ -119,8 +118,8 @@ expression: content
       "@id": "verity:stg_activity",
       "@type": "dcat:Dataset",
       "rdfs:label": "stg_activity",
-      "verity:resourceType": "Model",
-      "verity:securityLevel": "Internal",
+      "verity:resourceType": "model",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
@@ -148,8 +147,8 @@ expression: content
       "@id": "verity:stg_model_metadata",
       "@type": "dcat:Dataset",
       "rdfs:label": "stg_model_metadata",
-      "verity:resourceType": "Model",
-      "verity:securityLevel": "Internal",
+      "verity:resourceType": "model",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
@@ -174,7 +173,7 @@ expression: content
         {
           "@type": "verity:Column",
           "name": "created_by",
-          "policy": "pii_masking"
+          "policy": "hash"
         }
       ]
     },
@@ -182,8 +181,8 @@ expression: content
       "@id": "verity:stg_predictions",
       "@type": "dcat:Dataset",
       "rdfs:label": "stg_predictions",
-      "verity:resourceType": "Model",
-      "verity:securityLevel": "Internal",
+      "verity:resourceType": "model",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
@@ -211,8 +210,8 @@ expression: content
       "@id": "verity:stg_users",
       "@type": "dcat:Dataset",
       "rdfs:label": "stg_users",
-      "verity:resourceType": "Model",
-      "verity:securityLevel": "Internal",
+      "verity:resourceType": "model",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",
@@ -221,12 +220,12 @@ expression: content
         {
           "@type": "verity:Column",
           "name": "email",
-          "policy": "pii_masking"
+          "policy": "hash"
         },
         {
           "@type": "verity:Column",
           "name": "name",
-          "policy": "pii_masking"
+          "policy": "hash"
         },
         {
           "@type": "verity:Column",
@@ -246,13 +245,13 @@ expression: content
       "@id": "verity:train_churn_dataset_v1",
       "@type": "dcat:Dataset",
       "rdfs:label": "train_churn_dataset_v1",
-      "verity:resourceType": "Model",
+      "verity:resourceType": "model",
       "prov:wasDerivedFrom": [
         "verity:feat_user_demographics_masked",
         "verity:feat_user_engagement",
         "verity:stg_predictions"
       ],
-      "verity:securityLevel": "Internal",
+      "verity:securityLevel": "internal",
       "verity:columns": [
         {
           "@type": "verity:Column",

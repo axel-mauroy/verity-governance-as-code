@@ -36,7 +36,7 @@ Single binary written in Rust. No Python `venv` hell. No "Cold Start".
 |---------|-------------|
 | **Dual SQL Engine** | Supports **DuckDB** (default) and **Apache DataFusion** — selectable via config |
 | **Parallel DAG Execution** | Independent layers execute concurrently via `tokio` for maximum throughput |
-| **Auto PII Masking** | Columns tagged with `policy: pii_masking` are automatically wrapped in `SHA256()` at compile time |
+| **Auto PII Masking** | Columns tagged with `policy: hash` are automatically wrapped in `SHA256()` at compile time |
 | **Auto-Schema Propagation** | Undocumented columns are detected and added to `schema.yml` automatically |
 | **Source Generation** | `verity generate` scans data directories and creates `models/sources.yaml` with smart merge |
 | **Data Quality Tests** | `unique`, `not_null`, and custom tests run after each model materialization |
@@ -186,7 +186,7 @@ Policies are declared in YAML and enforced automatically:
 # In schema.yml or <model>.yml
 columns:
   - name: email
-    policy: pii_masking      # → SHA256(CAST(email AS VARCHAR)) AS email
+    policy: hash      # → SHA256(CAST(email AS VARCHAR)) AS email
   - name: ssn
     policy: redact            # → 'REDACTED' AS ssn
   - name: phone

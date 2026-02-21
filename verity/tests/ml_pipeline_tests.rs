@@ -1,3 +1,5 @@
+//verity/tests/ml_pipeline_tests.rs
+
 use anyhow::{Context, Result};
 use assert_cmd::prelude::*;
 use datafusion::prelude::*;

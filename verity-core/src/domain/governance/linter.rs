@@ -49,7 +49,7 @@ impl GovernanceLinter {
                 {
                     return Err(anyhow!(
                         "COMPLIANCE ERROR: PII detected in column '{}' of model '{}' \
-                        without mandatory security tags (e.g. policy: pii_masking).",
+                        without mandatory security tags (e.g. policy: hash).",
                         column_name,
                         model.name
                     ));

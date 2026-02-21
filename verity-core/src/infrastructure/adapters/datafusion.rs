@@ -4,7 +4,7 @@ use async_trait::async_trait;
 use datafusion::prelude::*;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
-use tokio::sync::Mutex;
+// use tokio::sync::Mutex;
 
 // Hexagonal Imports
 use crate::domain::governance::governance_rule::GovernancePolicySet;
@@ -17,7 +17,7 @@ use datafusion::arrow::datatypes::DataType;
 use datafusion::logical_expr::{Volatility, create_udf};
 
 pub struct DataFusionConnector {
-    ctx: Arc<Mutex<SessionContext>>,
+    ctx: Arc<SessionContext>,
     target_dir: PathBuf,
 }
 
@@ -26,7 +26,7 @@ impl DataFusionConnector {
         let ctx = SessionContext::new();
         Self::register_error_udf(&ctx);
         Ok(Self {
-            ctx: Arc::new(Mutex::new(ctx)),
+            ctx: Arc::new(ctx),
             target_dir: target_dir.to_path_buf(),
         })
     }
@@ -72,11 +72,11 @@ impl DataFusionConnector {
     /// Once registered, every SQL query through this session will have
     /// matching columns automatically rewritten at the logical plan level.
     pub async fn register_governance_rules(&self, policy_set: GovernancePolicySet) {
-        if policy_set.is_empty() {
+        if policy_set.column_policies.is_empty() {
             return;
         }
-        let ctx = self.ctx.lock().await;
-        ctx.add_analyzer_rule(Arc::new(GovernanceRule::new(policy_set)));
+        self.ctx
+            .add_analyzer_rule(Arc::new(GovernanceRule::new(policy_set)));
         println!("    🛡️  Governance rules registered at plan level (DataFusion optimizer)");
     }
 }
@@ -84,8 +84,7 @@ impl DataFusionConnector {
 #[async_trait]
 impl Connector for DataFusionConnector {
     async fn execute(&self, query: &str) -> Result<(), VerityError> {
-        let ctx = self.ctx.lock().await;
-        let df = ctx.sql(query).await.map_err(|e| {
+        let df = self.ctx.sql(query).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
         // Collect to trigger execution
@@ -99,8 +98,7 @@ impl Connector for DataFusionConnector {
         &self,
         query: &str,
     ) -> Result<Vec<datafusion::arrow::record_batch::RecordBatch>, VerityError> {
-        let ctx = self.ctx.lock().await;
-        let df = ctx.sql(query).await.map_err(|e| {
+        let df = self.ctx.sql(query).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
         df.collect().await.map_err(|e| {
@@ -109,8 +107,7 @@ impl Connector for DataFusionConnector {
     }
 
     async fn fetch_columns(&self, table_name: &str) -> Result<Vec<ColumnSchema>, VerityError> {
-        let ctx = self.ctx.lock().await;
-        let df = ctx.table(table_name).await.map_err(|e| {
+        let df = self.ctx.table(table_name).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
 
@@ -129,8 +126,8 @@ impl Connector for DataFusionConnector {
     }
 
     async fn register_source(&self, name: &str, path: &str) -> Result<(), VerityError> {
-        let ctx = self.ctx.lock().await;
-        ctx.register_csv(name, path, CsvReadOptions::default())
+        self.ctx
+            .register_csv(name, path, CsvReadOptions::default())
             .await
             .map_err(|e| {
                 VerityError::Infrastructure(InfrastructureError::Database(
@@ -146,19 +143,18 @@ impl Connector for DataFusionConnector {
         sql: &str,
         materialization_type: &str,
     ) -> Result<String, VerityError> {
-        let ctx = self.ctx.lock().await;
-
         match materialization_type {
             "view" => {
                 // CORRECTION: Use DataFrame API to register view programmatically
                 // instead of raw SQL DDL, to avoid double-quoting issues with UniversalQuoter
-                let df = ctx.sql(sql).await.map_err(|e| {
+                let df = self.ctx.sql(sql).await.map_err(|e| {
                     VerityError::Infrastructure(InfrastructureError::Database(
                         DatabaseError::DataFusion(e),
                     ))
                 })?;
 
-                ctx.register_table(table_name, df.into_view())
+                self.ctx
+                    .register_table(table_name, df.into_view())
                     .map_err(|e| {
                         VerityError::Infrastructure(InfrastructureError::Database(
                             DatabaseError::DataFusion(e),
@@ -168,7 +164,7 @@ impl Connector for DataFusionConnector {
             "table" => {
                 // DataFusion: execute the SQL query, then write results to Parquet
                 // and re-register as a table for downstream models
-                let df = ctx.sql(sql).await.map_err(|e| {
+                let df = self.ctx.sql(sql).await.map_err(|e| {
                     VerityError::Infrastructure(InfrastructureError::Database(
                         DatabaseError::DataFusion(e),
                     ))
@@ -196,19 +192,20 @@ impl Connector for DataFusionConnector {
                 })?;
 
                 // Re-register the Parquet file as a table for downstream queries
-                ctx.register_parquet(
-                    table_name,
-                    parquet_path
-                        .to_str()
-                        .ok_or_else(|| VerityError::InternalError("Invalid parquet path".into()))?,
-                    ParquetReadOptions::default(),
-                )
-                .await
-                .map_err(|e| {
-                    VerityError::Infrastructure(InfrastructureError::Database(
-                        DatabaseError::DataFusion(e),
-                    ))
-                })?;
+                self.ctx
+                    .register_parquet(
+                        table_name,
+                        parquet_path.to_str().ok_or_else(|| {
+                            VerityError::InternalError("Invalid parquet path".into())
+                        })?,
+                        ParquetReadOptions::default(),
+                    )
+                    .await
+                    .map_err(|e| {
+                        VerityError::Infrastructure(InfrastructureError::Database(
+                            DatabaseError::DataFusion(e),
+                        ))
+                    })?;
             }
             _ => return Err(VerityError::InternalError("Unknown Strategy".into())),
         }
@@ -217,8 +214,7 @@ impl Connector for DataFusionConnector {
     }
 
     async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
-        let ctx = self.ctx.lock().await;
-        let df = ctx.sql(query).await.map_err(|e| {
+        let df = self.ctx.sql(query).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
 

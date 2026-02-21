@@ -1,5 +1,8 @@
+// verity-core/src/domain/governance/semantic.rs
+
 use crate::domain::project::{Manifest, ManifestNode, ResourceType};
 use serde::Serialize;
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 
 // Utilisation de constantes pour les namespaces fixes (évite les allocations String)
@@ -9,48 +12,48 @@ const NS_PROV: &str = "http://www.w3.org/ns/prov#";
 const NS_RDFS: &str = "http://www.w3.org/2000/01/rdf-schema#";
 
 #[derive(Debug, Serialize)]
-pub struct SemanticGraph {
+pub struct SemanticGraph<'a> {
     #[serde(rename = "@context")]
     pub context: BTreeMap<&'static str, &'static str>,
 
     #[serde(rename = "@graph")]
-    pub graph: Vec<JsonLdNode>,
+    pub graph: Vec<JsonLdNode<'a>>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct JsonLdNode {
+pub struct JsonLdNode<'a> {
     #[serde(rename = "@id")]
     pub id: String,
     #[serde(rename = "@type")]
     pub type_: &'static str,
     #[serde(rename = "rdfs:label")]
-    pub label: String,
+    pub label: Cow<'a, str>,
     #[serde(rename = "verity:resourceType")]
-    pub resource_type: String,
+    pub resource_type: &'static str,
     #[serde(rename = "prov:wasDerivedFrom", skip_serializing_if = "Vec::is_empty")]
     pub was_derived_from: Vec<String>,
     #[serde(rename = "verity:securityLevel")]
-    pub security_level: String,
+    pub security_level: &'static str,
     #[serde(rename = "verity:columns", skip_serializing_if = "Vec::is_empty")]
-    pub columns: Vec<JsonLdColumn>,
+    pub columns: Vec<JsonLdColumn<'a>>,
 }
 
 #[derive(Debug, Serialize)]
-pub struct JsonLdColumn {
+pub struct JsonLdColumn<'a> {
     #[serde(rename = "@type")]
     pub type_: &'static str,
-    pub name: String,
+    pub name: Cow<'a, str>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub policy: Option<String>,
+    pub policy: Option<Cow<'a, str>>,
 }
 
-impl Default for SemanticGraph {
+impl<'a> Default for SemanticGraph<'a> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl SemanticGraph {
+impl<'a> SemanticGraph<'a> {
     pub fn new() -> Self {
         let mut context = BTreeMap::new();
         context.insert("verity", NS_VERITY);
@@ -64,10 +67,7 @@ impl SemanticGraph {
         }
     }
 
-    pub fn from_manifest(manifest: &Manifest) -> Self {
-        let mut semantic_graph = Self::new();
-
-        // On pré-alloue pour éviter les reallocs sur de gros graphes
+    pub fn from_manifest(manifest: &'a Manifest) -> Self {
         let mut sorted_nodes: Vec<_> = manifest
             .nodes
             .iter()
@@ -77,12 +77,22 @@ impl SemanticGraph {
         // Tri déterministe
         sorted_nodes.sort_unstable_by_key(|(name, _)| *name);
 
-        semantic_graph.graph = sorted_nodes
-            .into_iter()
-            .map(|(name, node)| JsonLdNode::from_node(name, node))
-            .collect();
+        // Optimisation : On pré-alloue le vecteur final du graphe
+        let mut graph = Vec::with_capacity(sorted_nodes.len());
 
-        semantic_graph
+        graph.extend(
+            sorted_nodes
+                .into_iter()
+                .map(|(name, node)| JsonLdNode::from_node(name, node)),
+        );
+
+        let mut context = BTreeMap::new();
+        context.insert("verity", NS_VERITY);
+        context.insert("dcat", NS_DCAT);
+        context.insert("prov", NS_PROV);
+        context.insert("rdfs", NS_RDFS);
+
+        Self { context, graph }
     }
 
     pub fn to_json_string(&self) -> serde_json::Result<String> {
@@ -90,8 +100,8 @@ impl SemanticGraph {
     }
 }
 
-impl JsonLdNode {
-    fn from_node(name: &str, node: &ManifestNode) -> Self {
+impl<'a> JsonLdNode<'a> {
+    fn from_node(name: &'a str, node: &'a ManifestNode) -> Self {
         let type_ = match node.resource_type {
             ResourceType::Model => "dcat:Dataset",
             ResourceType::Source => "dcat:Distribution",
@@ -99,27 +109,42 @@ impl JsonLdNode {
             _ => "verity:Resource",
         };
 
-        let mut was_derived_from: Vec<String> =
-            node.refs.iter().map(|r| format!("verity:{}", r)).collect();
-        was_derived_from.sort_unstable(); // Plus rapide que sort() si on se moque de l'ordre relatif des égaux
+        let mut was_derived_from: Vec<String> = node
+            .refs
+            .iter()
+            .map(|r| {
+                let mut s = String::with_capacity(7 + r.len());
+                s.push_str("verity:");
+                s.push_str(r);
+                s
+            })
+            .collect();
+        was_derived_from.sort_unstable(); // Crucial pour l'idempotence du JSON produit
 
         let columns = node
             .columns
             .iter()
             .map(|c| JsonLdColumn {
                 type_: "verity:Column",
-                name: c.name.clone(),
-                policy: c.policy.clone(),
+                name: Cow::Borrowed(&c.name),
+                policy: c
+                    .policy
+                    .as_ref()
+                    .map(|p: &crate::domain::governance::PolicyType| Cow::Borrowed(p.as_str())),
             })
             .collect();
 
+        let mut id = String::with_capacity(7 + name.len());
+        id.push_str("verity:");
+        id.push_str(name);
+
         Self {
-            id: format!("verity:{}", name),
+            id,
             type_,
-            label: name.to_string(),
-            resource_type: format!("{:?}", node.resource_type),
+            label: Cow::Borrowed(name),
+            resource_type: node.resource_type.as_str(),
             was_derived_from,
-            security_level: format!("{:?}", node.security_level),
+            security_level: node.security_level.as_str(),
             columns,
         }
     }
@@ -160,7 +185,9 @@ mod tests {
             columns: vec![ColumnInfo {
                 name: "id".to_string(),
                 tests: vec![],
-                policy: Some("hash".to_string()),
+                policy: Some(crate::domain::governance::PolicyType::Masking(
+                    crate::domain::governance::MaskingStrategy::Hash,
+                )),
             }],
             ..Default::default()
         };

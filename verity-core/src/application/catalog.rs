@@ -117,7 +117,7 @@ impl CatalogGenerator {
                             name: c.name.clone(),
                             type_info: "UNKNOWN".to_string(), // Placeholder: Type inference requires DuckDB connection
                             description: "Description auto-generated".to_string(), // Schema description mapping to be added
-                            policy: c.policy.clone(),
+                            policy: c.policy.map(|p| p.to_string()),
                             is_pii: c.policy.is_some(),
                         }
                     })

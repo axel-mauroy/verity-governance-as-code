@@ -8,62 +8,74 @@ pub struct GraphSolver;
 
 impl GraphSolver {
     /// Calculates the execution order of models (Topological Sort with Layers).
-    /// Returns a list of layers, where each layer contains nodes that can be executed in parallel.
-    /// Layer N depends only on layers 0..N-1.
-    pub fn plan_execution(manifest: &Manifest) -> Result<Vec<Vec<String>>, DomainError> {
-        let mut in_degree: HashMap<String, usize> = HashMap::new();
-        let mut adj_list: HashMap<String, Vec<String>> = HashMap::new();
+    /// Uses Zero-Copy architecture: returns references to the Manifest strings.
+    pub fn plan_execution<'a>(manifest: &'a Manifest) -> Result<Vec<Vec<&'a str>>, DomainError> {
+        // Pré-allocation pour éviter les redimensionnements dynamiques
+        let capacity = manifest.nodes.len();
+        let mut in_degree: HashMap<&'a str, usize> = HashMap::with_capacity(capacity);
+        let mut adj_list: HashMap<&'a str, Vec<&'a str>> = HashMap::with_capacity(capacity);
 
-        // 1. Initialization: Prepare all known nodes
+        // 1. Initialization: Prepare all known nodes using references
         for node_name in manifest.nodes.keys() {
-            in_degree.insert(node_name.clone(), 0);
-            adj_list.insert(node_name.clone(), Vec::new());
+            in_degree.insert(node_name.as_str(), 0);
+            adj_list.insert(node_name.as_str(), Vec::new());
         }
 
-        // 2. Graph Construction (Dependency Inversion)
+        // 2. Graph Construction with Strict Validation (Zero-Trust)
         for (node_name, node) in &manifest.nodes {
-            for dep_name in &node.refs {
-                if manifest.nodes.contains_key(dep_name) {
-                    adj_list
-                        .entry(dep_name.clone())
-                        .or_default()
-                        .push(node_name.clone());
+            let current_node = node_name.as_str();
 
-                    *in_degree.entry(node_name.clone()).or_insert(0) += 1;
+            for dep_name in &node.refs {
+                let parent_node = dep_name.as_str();
+
+                // Faille de compilation bloquante si la référence n'existe pas
+                if !adj_list.contains_key(parent_node) {
+                    return Err(DomainError::CircularDependency(format!(
+                        "Dangling Reference: Model '{}' depends on '{}' which does not exist.",
+                        current_node, parent_node
+                    )));
+                    // Note: Il serait préférable de créer un `DomainError::DanglingReference`
+                    // dans ton enum d'erreur pour être plus sémantique.
+                }
+
+                // Inversion de dépendance : Le parent pointe vers l'enfant
+                if let Some(list) = adj_list.get_mut(parent_node) {
+                    list.push(current_node);
+                }
+                if let Some(degree) = in_degree.get_mut(current_node) {
+                    *degree += 1;
                 }
             }
         }
 
         // 3. Kahn's Algorithm (Layered)
-        let mut layers: Vec<Vec<String>> = Vec::new();
-        let mut queue: VecDeque<String> = VecDeque::new();
+        let mut layers: Vec<Vec<&'a str>> = Vec::new();
+        let mut queue: VecDeque<&'a str> = VecDeque::new();
 
         // Initial layer: nodes with 0 dependencies
         for (name, &degree) in &in_degree {
             if degree == 0 {
-                queue.push_back(name.clone());
+                queue.push_back(name);
             }
         }
 
         let mut total_resolved = 0;
 
         while !queue.is_empty() {
-            let mut current_layer = Vec::new();
-            // Capture the current size of queue - these are all nodes in the *current* layer
-            // that are ready to run.
             let layer_size = queue.len();
+            let mut current_layer = Vec::with_capacity(layer_size);
 
             for _ in 0..layer_size {
                 if let Some(current) = queue.pop_front() {
-                    current_layer.push(current.clone());
+                    current_layer.push(current);
                     total_resolved += 1;
 
-                    if let Some(neighbors) = adj_list.get(&current) {
+                    if let Some(neighbors) = adj_list.get(current) {
                         for neighbor in neighbors {
                             if let Some(degree) = in_degree.get_mut(neighbor) {
                                 *degree -= 1;
                                 if *degree == 0 {
-                                    queue.push_back(neighbor.clone());
+                                    queue.push_back(neighbor);
                                 }
                             }
                         }
@@ -74,11 +86,10 @@ impl GraphSolver {
         }
 
         // 4. Cycle Detection
-        if total_resolved != manifest.nodes.len() {
+        if total_resolved != capacity {
             return Err(DomainError::CircularDependency(format!(
-                "Graph contains a cycle. Resolved {}/{} nodes.",
-                total_resolved,
-                manifest.nodes.len()
+                "Graph contains a cycle. Resolved {}/{} nodes. Check your dependencies.",
+                total_resolved, capacity
             )));
         }
 
@@ -111,7 +122,6 @@ mod tests {
 
     #[test]
     fn test_dag_linear() -> Result<()> {
-        // A -> B -> C (C depends on B, B depends on A)
         let mut nodes = HashMap::new();
         nodes.insert("model_a".to_string(), create_mock_node("model_a", vec![]));
         nodes.insert(
@@ -130,19 +140,15 @@ mod tests {
         };
 
         let plan = GraphSolver::plan_execution(&manifest)?;
-        // A (no deps) -> Layer 0
-        // B (deps on A) -> Layer 1
-        // C (deps on B) -> Layer 2
         assert_eq!(plan.len(), 3);
-        assert!(plan[0].contains(&"model_a".to_string()));
-        assert!(plan[1].contains(&"model_b".to_string()));
-        assert!(plan[2].contains(&"model_c".to_string()));
+        assert!(plan[0].contains(&"model_a"));
+        assert!(plan[1].contains(&"model_b"));
+        assert!(plan[2].contains(&"model_c"));
         Ok(())
     }
 
     #[test]
     fn test_dag_cycle_error() {
-        // A -> B -> A (Cycle)
         let mut nodes = HashMap::new();
         nodes.insert(
             "model_a".to_string(),
@@ -158,8 +164,28 @@ mod tests {
             nodes,
             sources: HashMap::new(),
         };
-
         let result = GraphSolver::plan_execution(&manifest);
         assert!(matches!(result, Err(DomainError::CircularDependency(_))));
+    }
+
+    #[test]
+    fn test_dangling_reference_fails() {
+        let mut nodes = HashMap::new();
+        // model_a depends on non_existent_model
+        nodes.insert(
+            "model_a".to_string(),
+            create_mock_node("model_a", vec!["non_existent_model"]),
+        );
+
+        let manifest = Manifest {
+            project_name: "test".into(),
+            nodes,
+            sources: HashMap::new(),
+        };
+        let result = GraphSolver::plan_execution(&manifest);
+        assert!(
+            result.is_err(),
+            "A missing dependency should trigger a hard compilation error."
+        );
     }
 }

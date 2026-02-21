@@ -1,3 +1,5 @@
+// src/domain/project/configuration.rs
+
 use crate::domain::governance::configuration::GovernanceConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

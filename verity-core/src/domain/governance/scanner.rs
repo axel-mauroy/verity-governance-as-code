@@ -5,12 +5,14 @@ use crate::domain::governance::pii::{PiiAction, PiiConfig, PiiSeverity};
 use regex::Regex;
 
 /// A violation detected in data.
+/// OPTIMIZATION: Zero-copy architecture. We hold references to the scanned text
+/// and the rule name to avoid heap allocations in the hot path.
 #[derive(Debug, Clone, PartialEq)]
-pub struct Violation {
-    pub rule_name: String,
+pub struct Violation<'a> {
+    pub rule_name: &'a str,
     pub severity: PiiSeverity,
     pub action: PiiAction,
-    pub matched_value: String, // The part of the text that triggered the alert
+    pub matched_value: &'a str, // The part of the text that triggered the alert
 }
 
 /// Optimized version of a pattern for runtime.
@@ -37,7 +39,8 @@ impl PiiScanner {
             });
         }
 
-        let mut compiled_patterns = Vec::new();
+        // Pre-allocate vector to avoid reallocations during initialization
+        let mut compiled_patterns = Vec::with_capacity(config.patterns.len());
 
         for pattern in &config.patterns {
             match Regex::new(&pattern.regex) {
@@ -45,15 +48,12 @@ impl PiiScanner {
                     compiled_patterns.push(CompiledPattern {
                         name: pattern.name.clone(),
                         regex,
-                        severity: pattern.severity.clone(),
-                        action: pattern.action.clone(),
+                        severity: pattern.severity,
+                        action: pattern.action,
                     });
                 }
                 Err(e) => {
-                    // Dans le Domain, on ne veut pas dépendre de 'serde_yaml'.
-                    // On peut soit loguer un warning (si on avait un logger injecté),
-                    // soit renvoyer une erreur bloquante. Ici, choisissons l'erreur bloquante
-                    // car une regex PII malformée est un risque de sécurité (silence = fail).
+                    // Strict governance: a malformed security policy is a critical error.
                     return Err(DomainError::GovernanceViolation {
                         _asset_name: format!("Config Regex: {}", pattern.name),
                         child_level: "Invalid Syntax".to_string(),
@@ -70,7 +70,8 @@ impl PiiScanner {
     }
 
     /// Scans a string and returns the list of violations found.
-    pub fn scan(&self, text: &str) -> Vec<Violation> {
+    /// 'a links the lifetime of the returned Violations to the input text and the scanner itself.
+    pub fn scan<'a>(&'a self, text: &'a str) -> Vec<Violation<'a>> {
         if !self.enabled {
             return vec![];
         }
@@ -81,10 +82,10 @@ impl PiiScanner {
             // find() returns the first occurrence, which is enough to flag a line
             if let Some(mat) = pattern.regex.find(text) {
                 violations.push(Violation {
-                    rule_name: pattern.name.clone(),
-                    severity: pattern.severity.clone(),
-                    action: pattern.action.clone(),
-                    matched_value: mat.as_str().to_string(),
+                    rule_name: &pattern.name,
+                    severity: pattern.severity,
+                    action: pattern.action,
+                    matched_value: mat.as_str(),
                 });
             }
         }

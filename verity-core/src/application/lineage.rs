@@ -138,7 +138,13 @@ impl LineageAnalyzer {
                 let pii_cols: Vec<(&str, &str)> = node
                     .columns
                     .iter()
-                    .filter_map(|c| c.policy.as_ref().map(|p| (c.name.as_str(), p.as_str())))
+                    .filter_map(|c| {
+                        c.policy
+                            .as_ref()
+                            .map(|p: &crate::domain::governance::PolicyType| {
+                                (c.name.as_str(), p.as_str())
+                            })
+                    })
                     .collect();
                 (name.as_str(), pii_cols)
             })
@@ -184,7 +190,7 @@ impl LineageAnalyzer {
                             let flow = PiiFlow {
                                 column: col_name.to_string(),
                                 upstream_policy: upstream_policy.to_string(),
-                                downstream_policy: downstream_col.policy.clone(),
+                                downstream_policy: downstream_col.policy.map(|p| p.to_string()),
                                 secured,
                             };
 
@@ -248,7 +254,7 @@ mod tests {
     use super::*;
     use crate::domain::governance::SecurityLevel;
     use crate::domain::project::manifest::ManifestNode;
-    use crate::domain::project::{ColumnInfo, NodeConfig, ResourceType};
+    use crate::domain::project::manifest::{ColumnInfo, NodeConfig, ResourceType};
     use std::path::PathBuf;
 
     fn mock_node(name: &str, refs: Vec<&str>, columns: Vec<ColumnInfo>) -> ManifestNode {
@@ -303,7 +309,9 @@ mod tests {
                 vec![ColumnInfo {
                     name: "email".into(),
                     tests: vec![],
-                    policy: Some("pii_masking".into()),
+                    policy: Some(crate::domain::governance::PolicyType::Masking(
+                        crate::domain::governance::MaskingStrategy::Hash,
+                    )),
                 }],
             ),
         );
@@ -343,19 +351,9 @@ mod tests {
                 vec![ColumnInfo {
                     name: "email".into(),
                     tests: vec![],
-                    policy: Some("pii_masking".into()),
-                }],
-            ),
-        );
-        nodes.insert(
-            "int_users".into(),
-            mock_node(
-                "int_users",
-                vec!["stg_users"],
-                vec![ColumnInfo {
-                    name: "email".into(),
-                    tests: vec![],
-                    policy: Some("pii_hashing".into()),
+                    policy: Some(crate::domain::governance::PolicyType::Masking(
+                        crate::domain::governance::MaskingStrategy::Hash,
+                    )),
                 }],
             ),
         );

@@ -20,10 +20,10 @@ schema:
     description: User email address
     tests:
     - not_null
-    policy: pii_masking
+    policy: hash
   - name: name
     description: User full name
-    policy: pii_masking
+    policy: hash
   - name: region
     tests:
     - not_null

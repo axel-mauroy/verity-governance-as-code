@@ -5,28 +5,27 @@ schema:
   compliance:
     audit:
       enabled: true
-        
+
   columns:
   - name: document_id
     description: "Unique identifier for each document"
     tests:
-      - unique
-      - not_null
-    policy: production_safe
+    - unique
+    - not_null
   - name: model_name
     description: "Name of the model used for embedding"
     tests:
-      - not_null
+    - not_null
   - name: embedding_vector
     description: "Vector for similarity search"
     type: vector
     tests:
-      - not_null
+    - not_null
   - name: created_at
     description: "Timestamp of when the document was processed"
     tests:
-      - not_null
+    - not_null
   - name: content
     description: "Content of the document"
     tests:
-      - not_null
+    - not_null

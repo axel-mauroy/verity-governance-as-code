@@ -29,26 +29,28 @@ impl PolicyRewriter {
         let mut select_clause = Vec::new();
 
         for col in &node.columns {
-            let column_expr = match col.policy.as_deref() {
-                // 🔒 HASH (SHA256)
-                // Note : We assume a standard SQL syntax (DuckDB/Postgres).
-                // If we wanted to support multiple dialects, we would need a "SqlDialectAdapter".
-                Some("hash") => format!("SHA256(CAST({} AS VARCHAR)) AS {}", col.name, col.name),
-
-                // 🔒 REDACT (Total replacement)
-                Some("redact") => format!("'REDACTED' AS {}", col.name),
-
-                // 🔒 EMAIL MASK (Partiel) -> j***@domain.com
-                Some("mask_email") => format!(
-                    "regexp_replace({}, '(^.).*(@.*$)', '\\1****\\2') AS {}",
-                    col.name, col.name
-                ),
-
-                // 🔒 PII MASKING (Generic) -> Hash by default
-                Some("pii_masking") => {
-                    format!("SHA256(CAST({} AS VARCHAR)) AS {}", col.name, col.name)
-                }
-
+            let column_expr = match col.policy {
+                // 🔒 MASKING
+                Some(crate::domain::governance::PolicyType::Masking(strategy)) => match strategy {
+                    crate::domain::governance::MaskingStrategy::Hash => {
+                        format!("SHA256(CAST({} AS VARCHAR)) AS {}", col.name, col.name)
+                    }
+                    crate::domain::governance::MaskingStrategy::Redact => {
+                        format!("'REDACTED' AS {}", col.name)
+                    }
+                    crate::domain::governance::MaskingStrategy::MaskEmail => {
+                        format!(
+                            "regexp_replace({}, '(^.).*(@.*$)', '\\1****\\2') AS {}",
+                            col.name, col.name
+                        )
+                    }
+                    _ => {
+                        // Generic/Nullify fallback to Hash for now
+                        format!("SHA256(CAST({} AS VARCHAR)) AS {}", col.name, col.name)
+                    }
+                },
+                // 🔒 OTHER
+                Some(crate::domain::governance::PolicyType::Drop) => continue,
                 // No policy or unknown -> Keep the column as is
                 _ => col.name.clone(),
             };
@@ -72,6 +74,7 @@ impl PolicyRewriter {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use crate::domain::governance::{MaskingStrategy, PolicyType};
     use crate::domain::project::{ColumnInfo, ManifestNode, NodeConfig, ResourceType};
     use anyhow::Result;
     use std::path::PathBuf;
@@ -119,7 +122,7 @@ mod tests {
         let node = create_mock_node(vec![ColumnInfo {
             name: "user_id".to_string(),
             tests: vec![],
-            policy: Some("hash".to_string()),
+            policy: Some(PolicyType::Masking(MaskingStrategy::Hash)),
         }]);
 
         let sql = "SELECT * FROM raw_table";
@@ -131,32 +134,32 @@ mod tests {
     }
 
     #[test]
-    fn test_apply_masking_redact() -> Result<()> {
-        let node = create_mock_node(vec![ColumnInfo {
-            name: "ssn".to_string(),
-            tests: vec![],
-            policy: Some("redact".to_string()),
-        }]);
-
-        let sql = "SELECT * FROM raw_table";
-        let result = PolicyRewriter::apply_masking(sql, &node)?;
-
-        assert!(result.contains("'REDACTED' AS ssn"));
-        Ok(())
-    }
-
-    #[test]
     fn test_apply_masking_email() -> Result<()> {
         let node = create_mock_node(vec![ColumnInfo {
             name: "email".to_string(),
             tests: vec![],
-            policy: Some("mask_email".to_string()),
+            policy: Some(PolicyType::Masking(MaskingStrategy::MaskEmail)),
         }]);
 
         let sql = "SELECT * FROM raw_table";
         let result = PolicyRewriter::apply_masking(sql, &node)?;
 
         assert!(result.contains("regexp_replace(email, '(^.).*(@.*$)', '\\1****\\2') AS email"));
+        Ok(())
+    }
+
+    #[test]
+    fn test_apply_masking_redact() -> Result<()> {
+        let node = create_mock_node(vec![ColumnInfo {
+            name: "ssn".to_string(),
+            tests: vec![],
+            policy: Some(PolicyType::Masking(MaskingStrategy::Redact)),
+        }]);
+
+        let sql = "SELECT * FROM raw_table";
+        let result = PolicyRewriter::apply_masking(sql, &node)?;
+
+        assert!(result.contains("'REDACTED' AS ssn"));
         Ok(())
     }
 
@@ -171,12 +174,12 @@ mod tests {
             ColumnInfo {
                 name: "email".to_string(),
                 tests: vec![],
-                policy: Some("mask_email".to_string()),
+                policy: Some(PolicyType::Masking(MaskingStrategy::MaskEmail)),
             },
             ColumnInfo {
                 name: "salary".to_string(),
                 tests: vec![],
-                policy: Some("redact".to_string()),
+                policy: Some(PolicyType::Masking(MaskingStrategy::Redact)),
             },
         ]);
 

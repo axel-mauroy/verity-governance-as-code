@@ -1,5 +1,6 @@
 // verity-core/src/infrastructure/compiler/discovery.rs
 
+use crate::domain::governance::PolicyType;
 use crate::domain::project::ProjectConfig;
 use crate::domain::project::manifest::{
     ColumnInfo, Manifest, ManifestNode, MaterializationType, NodeConfig, ResourceType,
@@ -240,7 +241,7 @@ impl GraphDiscovery {
             if let Some(cols) = &schema_def.columns {
                 cols.iter()
                     .map(|c| {
-                        let mut policy = c.policy.clone();
+                        let mut policy: Option<PolicyType> = c.policy;
 
                         // Fuzzy Policy Injection
                         // Check if policy is missing and matches a fuzzy rule
@@ -257,7 +258,7 @@ impl GraphDiscovery {
                                         .is_ok_and(|re| re.is_match(&c.name))
                                     {
                                         // TODO: Environment check if added to ColumnPolicy
-                                        policy = Some(rule.policy.clone());
+                                        policy = Some(rule.policy);
                                         break; // Apply first matching rule
                                     }
                                 }

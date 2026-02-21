@@ -1,11 +1,10 @@
 // verity-core/src/domain/project/manifest.rs
-// Force rebuild 2
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-use crate::domain::governance::SecurityLevel;
+use crate::domain::governance::{PolicyType, SecurityLevel};
 
 /// The Manifest represents the complete and resolved state of the Verity project.
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -54,7 +53,7 @@ impl ManifestNode {
     pub fn is_flagged_as_pii(&self, col_name: &str) -> bool {
         self.columns
             .iter()
-            .any(|c| c.name == col_name && c.policy.as_deref() == Some("pii_masking"))
+            .any(|c| c.name == col_name && matches!(c.policy, Some(PolicyType::Masking(_))))
     }
 }
 
@@ -66,6 +65,17 @@ pub enum ResourceType {
     Source,
     Analysis,
     Test,
+}
+
+impl ResourceType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            Self::Model => "model",
+            Self::Source => "source",
+            Self::Analysis => "analysis",
+            Self::Test => "test",
+        }
+    }
 }
 
 impl Default for ManifestNode {
@@ -141,7 +151,7 @@ pub struct ColumnInfo {
     pub tests: Vec<String>,
 
     #[serde(default)]
-    pub policy: Option<String>,
+    pub policy: Option<PolicyType>,
 }
 
 #[cfg(test)]

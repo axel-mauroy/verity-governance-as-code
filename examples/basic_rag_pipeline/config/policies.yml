@@ -19,32 +19,32 @@ pii_detection:
       regex: '\b\d{3}[-.]?\d{3}[-.]?\d{4}\b'
       severity: high
       action: mask
-      masking_strategy: redaction # Ex: "[REDACTED]"
+      masking_strategy: redact # Ex: "[REDACTED]"
       
     - name: ssn
       regex: '\b\d{3}-\d{2}-\d{4}\b'
       severity: critical
       action: block
-      masking_strategy: redaction # Ex: "123-45-6789" -> "***-**-6789"
+      masking_strategy: redact # Ex: "123-45-6789" -> "***-**-6789"
       
     - name: credit_card
       regex: '\b\d{4}[\s-]?\d{4}[\s-]?\d{4}[\s-]?\d{4}\b'
       severity: critical
       action: block
-      masking_strategy: redaction # Ex: "1234-5678-9012-3456" -> "****-****-****-3456"
+      masking_strategy: redact # Ex: "1234-5678-9012-3456" -> "****-****-****-3456"
 
   # Column-level policies
   column_policies:
     - column_name_pattern: '.*email.*'
-      policy: pii_masking
+      policy: hash
       environments: [dev, uat]
       
     - column_name_pattern: '.*phone.*'
-      policy: pii_masking
+      policy: hash
       environments: [dev, uat]
       
     - column_name_pattern: '.*ssn.*'
-      policy: pii_blocking
+      policy: drop
       environments: [dev, uat, prod]
 
 

@@ -12,7 +12,7 @@ schema:
     description: Auto-detected
   - name: email
     description: Auto-detected
-    policy: pii_masking
+    policy: hash
   - name: customer_id
     description: Auto-detected
   - name: account_status

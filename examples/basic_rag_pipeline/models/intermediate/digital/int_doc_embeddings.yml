@@ -20,6 +20,6 @@ schema:
     description: Auto-detected
   - name: author_email
     description: Auto-detected
-    policy: pii_masking
+    policy: hash
   - name: author_customer_id
     description: Auto-detected

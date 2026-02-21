@@ -143,10 +143,10 @@ mod tests {
         let guard = GovernanceGuard::new(scanner, true);
 
         let violations = vec![Violation {
-            rule_name: "CriticalRule".into(),
+            rule_name: "CriticalRule",
             severity: PiiSeverity::Critical,
             action: PiiAction::Warn,
-            matched_value: "val".into(),
+            matched_value: "val",
         }];
 
         let result = guard.validate_security_boundary(&SecurityLevel::Public, &violations);
@@ -160,10 +160,10 @@ mod tests {
         let guard = GovernanceGuard::new(scanner, true);
 
         let violations = vec![Violation {
-            rule_name: "LowRule".into(),
+            rule_name: "LowRule",
             severity: PiiSeverity::Low,
             action: PiiAction::Warn,
-            matched_value: "val".into(),
+            matched_value: "val",
         }];
 
         let result = guard.validate_security_boundary(&SecurityLevel::Public, &violations);

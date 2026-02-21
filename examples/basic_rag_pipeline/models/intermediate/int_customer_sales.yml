@@ -10,7 +10,7 @@ schema:
   columns:
   - name: email
     description: Auto-detected
-    policy: pii_masking
+    policy: hash
   - name: last_name
     description: Auto-detected
   - name: order_id

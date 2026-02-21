@@ -9,7 +9,7 @@ use std::path::{Path, PathBuf};
 use tracing::{info, instrument, warn};
 
 use crate::domain::error::DomainError;
-use crate::domain::governance::ColumnPolicy;
+use crate::domain::governance::{ColumnPolicy, PolicyType};
 use crate::domain::ports::SchemaSource;
 use crate::infrastructure::error::InfrastructureError;
 use anyhow::Context;
@@ -133,7 +133,7 @@ pub struct ColumnSchema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tests: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub policy: Option<String>,
+    pub policy: Option<PolicyType>,
 }
 
 // =============================================================================
@@ -349,7 +349,7 @@ fn is_same_family(full_name: &str, base_name: &str) -> bool {
 
 struct CachedPolicy {
     regex: Regex,
-    policy_name: String,
+    policy_type: PolicyType,
 }
 
 impl CachedPolicy {
@@ -361,17 +361,17 @@ impl CachedPolicy {
             })?;
             cached.push(CachedPolicy {
                 regex: re,
-                policy_name: p.policy.clone(),
+                policy_type: p.policy,
             });
         }
         Ok(cached)
     }
 }
 
-fn match_policy(column_name: &str, policies: &[CachedPolicy]) -> Option<String> {
+fn match_policy(column_name: &str, policies: &[CachedPolicy]) -> Option<PolicyType> {
     for p in policies {
         if p.regex.is_match(column_name) {
-            return Some(p.policy_name.clone());
+            return Some(p.policy_type);
         }
     }
     None
@@ -410,6 +410,7 @@ fn detect_tech_owner() -> Option<String> {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
+    use crate::domain::governance::MaskingStrategy;
     use anyhow::{Result, bail};
     use std::fs;
     use tempfile::tempdir;
@@ -417,7 +418,7 @@ mod tests {
     fn mock_policies() -> Vec<ColumnPolicy> {
         vec![ColumnPolicy {
             column_name_pattern: "email".to_string(),
-            policy: "hash".to_string(),
+            policy: PolicyType::Masking(MaskingStrategy::Hash),
         }]
     }
 

@@ -1,3 +1,5 @@
+// src/domain/ports/schema.rs
+
 use crate::domain::error::DomainError;
 use crate::domain::governance::ColumnPolicy;
 use crate::domain::project::LifecycleStatus;

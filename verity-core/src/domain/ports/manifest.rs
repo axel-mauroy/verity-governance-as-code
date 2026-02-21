@@ -1,3 +1,5 @@
+// src/domain/ports/manifest.rs
+
 use crate::domain::error::DomainError;
 use crate::domain::project::Manifest;
 use crate::domain::project::configuration::ProjectConfig;
