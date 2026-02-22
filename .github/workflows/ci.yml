@@ -48,8 +48,8 @@ jobs:
 
       - name: Zero-Panic Guard
         run: |
-          chmod +x .github/hooks/deny_unsecure.sh
-          ./.github/hooks/deny_unsecure.sh
+          chmod +x .githooks/deny_unsecure.sh
+          ./.githooks/deny_unsecure.sh
 
   build:
     name: 🏗️ Global Build

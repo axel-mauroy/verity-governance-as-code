@@ -1,0 +1,26 @@
+#!/bin/bash
+# .githooks/pre-commit
+
+echo "🛡️  Verity Pre-Commit Hook: Running Quality & Security Gates..."
+
+# On s'assure d'être à la racine du projet
+cd "$(git rev-parse --show-toplevel)"
+
+# 1. On lance ton script anti-panique / sécurité
+echo "--- Running deny_unsecure.sh ---"
+./.githooks/deny_unsecure.sh
+if [ $? -ne 0 ]; then
+  echo "❌ Security Check Failed! Commit aborted."
+  exit 1
+fi
+
+# 2. On lance ta vérification globale (lints, tests, formats)
+echo "--- Running full_verify.sh ---"
+./.githooks/full_verify.sh
+if [ $? -ne 0 ]; then
+  echo "❌ Quality Check Failed! Fix the errors and try committing again."
+  exit 1
+fi
+
+echo "✅ All gates passed. Committing..."
+exit 0

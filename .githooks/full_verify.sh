@@ -29,8 +29,8 @@ echo "--- 2️⃣ Security Gate ---"
 cargo deny check
 cargo audit
 # On réactive ton hook de sécurité
-chmod +x .github/hooks/deny_unsecure.sh
-./.github/hooks/deny_unsecure.sh
+chmod +x .githooks/deny_unsecure.sh
+./.githooks/deny_unsecure.sh
 
 echo "--- 3️⃣ Logic Gate ---"
 # Utilisation de nextest si disponible pour plus de rapidité, sinon cargo test
