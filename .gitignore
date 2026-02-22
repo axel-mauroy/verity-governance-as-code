@@ -5,11 +5,7 @@
 **/*.rs.bk
 # Cargo.lock est VOLONTAIREMENT retiré d'ici pour être versionné (Standard CLI)
 
-# ============================
-# DuckDB & Vector DB (Local)
-# ============================
-*.duckdb
-*.duckdb.wal
+
 .qdrant/
 .weaviate/
 

@@ -7,4 +7,3 @@ pub mod error;
 pub mod fs;
 
 // Optional: Re-export specific adapters if you want cleaner imports elsewhere
-// pub use adapters::duckdb::DuckDBConnector;

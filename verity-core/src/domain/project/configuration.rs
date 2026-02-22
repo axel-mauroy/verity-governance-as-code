@@ -9,7 +9,6 @@ use std::collections::HashMap;
 #[serde(rename_all = "lowercase")]
 pub enum Engine {
     #[default]
-    DuckDB,
     DataFusion,
 }
 

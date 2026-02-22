@@ -9,7 +9,7 @@ use anyhow::Context;
 use verity_core::application::run_pipeline;
 use verity_core::domain::project::Engine;
 use verity_core::infrastructure::adapters::datafusion::DataFusionConnector;
-use verity_core::infrastructure::adapters::duckdb::DuckDBConnector;
+
 use verity_core::infrastructure::compiler::discovery::GraphDiscovery;
 use verity_core::infrastructure::compiler::jinja::JinjaRenderer;
 use verity_core::infrastructure::config::project::load_project_config;
@@ -31,14 +31,6 @@ pub async fn execute(project_dir: PathBuf, select: Option<String>) -> anyhow::Re
 
     // B. Instantiate the DB Adapter based on engine config
     let connector: Box<dyn Connector> = match config.engine {
-        Engine::DuckDB => {
-            println!("   Engine: DuckDB 🦆");
-            let db_path = "verity_db.duckdb";
-            Box::new(
-                DuckDBConnector::new(db_path)
-                    .with_context(|| format!("Failed to initialize DuckDB at {}", db_path))?,
-            )
-        }
         Engine::DataFusion => {
             println!("   Engine: Apache DataFusion 🏹");
             let target_dir = project_dir.join(&config.target_path);

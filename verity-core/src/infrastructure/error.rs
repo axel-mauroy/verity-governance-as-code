@@ -5,13 +5,6 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Diagnostic)]
 pub enum DatabaseError {
-    #[error("DuckDB Engine Error: {0}")]
-    #[diagnostic(
-        code(verity::infra::database::duckdb),
-        help("An error occurred inside the DuckDB SQL engine.")
-    )]
-    DuckDB(#[from] duckdb::Error),
-
     #[error("DataFusion Engine Error: {0}")]
     #[diagnostic(
         code(verity::infra::database::datafusion),
@@ -60,11 +53,4 @@ pub enum InfrastructureError {
 
     #[error(transparent)]
     Anyhow(#[from] anyhow::Error),
-}
-
-// Manual implementation for shortcuts (e.g. `?` operator on duckdb calls)
-impl From<duckdb::Error> for InfrastructureError {
-    fn from(err: duckdb::Error) -> Self {
-        InfrastructureError::Database(DatabaseError::DuckDB(err))
-    }
 }

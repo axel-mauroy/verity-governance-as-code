@@ -34,11 +34,7 @@ pub enum Commands {
     },
 
     /// ⚡ Executes a raw SQL query (Ad-hoc)
-    Query {
-        query: String,
-        #[arg(long, default_value = "verity_db.duckdb")]
-        db_path: String,
-    },
+    Query { query: String },
 
     /// 🕵️‍♀️ Scans data directory and generates 'models/sources.yaml'
     Generate {
@@ -68,21 +64,6 @@ pub enum Commands {
         /// Project directory
         #[arg(long, default_value = ".")]
         project_dir: PathBuf,
-    },
-
-    /// 🔍 Inspects a DuckDB table (schema + sample rows)
-    Inspect {
-        /// Path to the DuckDB database file
-        #[arg(long, default_value = "verity_db.duckdb")]
-        db_path: String,
-
-        /// Table name to inspect
-        #[arg(long, short)]
-        table: String,
-
-        /// Number of sample rows to display
-        #[arg(long, default_value = "5")]
-        limit: usize,
     },
 
     /// 🔗 Analyzes data lineage and detects unsecured PII flows
@@ -155,24 +136,6 @@ mod tests {
                 Ok(())
             }
             _ => bail!("Expected Generate command"),
-        }
-    }
-
-    #[test]
-    fn test_cli_parse_inspect() -> Result<()> {
-        let args = Cli::parse_from(["verity", "inspect", "--table", "users", "--limit", "10"]);
-        match args.command {
-            Commands::Inspect {
-                table,
-                limit,
-                db_path,
-            } => {
-                assert_eq!(table, "users");
-                assert_eq!(limit, 10);
-                assert_eq!(db_path, "verity_db.duckdb");
-                Ok(())
-            }
-            _ => bail!("Expected Inspect command"),
         }
     }
 }

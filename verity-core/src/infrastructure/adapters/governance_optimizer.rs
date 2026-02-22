@@ -27,25 +27,32 @@ impl GovernanceRule {
     }
 
     fn rewrite_expr(&self, expr: Expr) -> Expr {
-        match &expr {
-            Expr::Column(col) => {
-                let col_name_clean = col.name().to_lowercase().trim_matches('"').to_string();
-                if let Some(strategy) = self.policies.get(&col_name_clean) {
-                    self.apply_policy(&expr, col.name(), strategy)
-                } else {
-                    expr
-                }
-            }
-            Expr::Alias(alias) => {
-                if let Expr::Column(col) = alias.expr.as_ref() {
+        let (base_expr, top_level_alias) = match expr {
+            Expr::Alias(alias) => (*alias.expr.clone(), Some(alias.name.clone())),
+            Expr::Column(col) => (Expr::Column(col.clone()), Some(col.name.clone())),
+            other => (other, None),
+        };
+
+        let fallback_expr = base_expr.clone();
+
+        let transformed_expr = base_expr
+            .transform(|e| {
+                if let Expr::Column(col) = &e {
                     let col_name_clean = col.name().to_lowercase().trim_matches('"').to_string();
                     if let Some(strategy) = self.policies.get(&col_name_clean) {
-                        return self.apply_policy(&alias.expr, &alias.name, strategy);
+                        let masked = self.apply_policy_raw(&e, strategy);
+                        return Ok(Transformed::yes(masked));
                     }
                 }
-                expr
-            }
-            _ => expr,
+                Ok(Transformed::no(e))
+            })
+            .unwrap_or_else(|_| Transformed::no(fallback_expr))
+            .data;
+
+        if let Some(name) = top_level_alias {
+            transformed_expr.alias(name)
+        } else {
+            transformed_expr
         }
     }
 
@@ -61,27 +68,28 @@ impl GovernanceRule {
             casted
         };
 
-        digest(hash_input, lit("sha256"))
+        encode(digest(hash_input, lit("sha256")), lit("hex"))
     }
 
-    fn apply_policy(&self, col_expr: &Expr, alias_name: &str, strategy: &MaskingStrategy) -> Expr {
+    fn apply_policy_raw(&self, col_expr: &Expr, strategy: &MaskingStrategy) -> Expr {
         match strategy {
-            MaskingStrategy::Hash => self.build_hash_expr(col_expr).alias(alias_name),
-            MaskingStrategy::Redact => lit("REDACTED").alias(alias_name),
-            MaskingStrategy::Nullify => lit(ScalarValue::Utf8(None)).alias(alias_name),
-            MaskingStrategy::Partial => {
-                concat(vec![left(col_expr.clone(), lit(2)), lit("***")]).alias(alias_name)
-            }
+            MaskingStrategy::Hash => self.build_hash_expr(col_expr),
+            MaskingStrategy::Redact => lit("REDACTED"),
+            MaskingStrategy::Nullify => lit(ScalarValue::Utf8(None)),
+            MaskingStrategy::Partial => concat(vec![left(col_expr.clone(), lit(2)), lit("***")]),
             MaskingStrategy::MaskEmail => regexp_replace(
                 col_expr.clone(),
                 lit("(^.).*(@.*$)"),
                 lit("\\1****\\2"),
                 None,
-            )
-            .alias(alias_name),
+            ),
             MaskingStrategy::EntityPreserving => {
-                concat(vec![lit("[PRESERVED_"), length(col_expr.clone()), lit("]")])
-                    .alias(alias_name)
+                // Remplacement de length() par character_length() si length() n'est pas reconnu
+                concat(vec![
+                    lit("[PRESERVED_"),
+                    character_length(col_expr.clone()),
+                    lit("]"),
+                ])
             }
         }
     }

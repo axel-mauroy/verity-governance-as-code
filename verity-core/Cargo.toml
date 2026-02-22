@@ -19,7 +19,7 @@ serde_json = { workspace = true }
 regex = { workspace = true }
 async-trait = { workspace = true }
 miette = { workspace = true }
-duckdb = { workspace = true }
+
 datafusion = { workspace = true }
 validator = { workspace = true }
 walkdir = { workspace = true }

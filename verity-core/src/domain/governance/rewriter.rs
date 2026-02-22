@@ -1,7 +1,8 @@
 // verity-core/src/domain/governance/rewriter.rs
 
 use crate::domain::error::DomainError;
-use crate::domain::project::ManifestNode;
+use crate::domain::governance::{MaskingStrategy, PolicyType};
+use crate::domain::project::ManifestNode; // Import propre
 
 pub struct PolicyRewriter;
 
@@ -9,58 +10,79 @@ impl PolicyRewriter {
     /// Take the raw SQL and apply the masks defined in the Node (Manifest).
     /// This function is PURE : it does not depend on any database.
     pub fn apply_masking(sql: &str, node: &ManifestNode) -> Result<String, DomainError> {
-        // If no column is defined (no contract), we don't touch anything
         if node.columns.is_empty() {
             return Ok(sql.to_string());
         }
 
-        // Check if there is at least one active policy
         let has_policies = node.columns.iter().any(|c| c.policy.is_some());
-
         if !has_policies {
             return Ok(sql.to_string());
         }
 
-        // Note: In a strict hexagonal architecture, we would avoid println! here
-        // or pass through a Logger trait. For now, we leave it for debugging.
-        // println!("    🛡️  Applying Governance Masking Layer...");
-
-        // 1. Build the list of columns for the final SELECT
         let mut select_clause = Vec::new();
 
         for col in &node.columns {
-            let column_expr = match col.policy {
+            let column_expr = match &col.policy {
                 // 🔒 MASKING
-                Some(crate::domain::governance::PolicyType::Masking(strategy)) => match strategy {
-                    crate::domain::governance::MaskingStrategy::Hash => {
-                        format!("SHA256(CAST({} AS VARCHAR)) AS {}", col.name, col.name)
+                Some(PolicyType::Masking(strategy)) => match strategy {
+                    MaskingStrategy::Hash => {
+                        format!(
+                            "encode(sha256(CAST({} AS VARCHAR)), 'hex') AS {}",
+                            col.name, col.name
+                        )
                     }
-                    crate::domain::governance::MaskingStrategy::Redact => {
+                    MaskingStrategy::Redact => {
                         format!("'REDACTED' AS {}", col.name)
                     }
-                    crate::domain::governance::MaskingStrategy::MaskEmail => {
+                    MaskingStrategy::MaskEmail => {
                         format!(
                             "regexp_replace({}, '(^.).*(@.*$)', '\\1****\\2') AS {}",
                             col.name, col.name
                         )
                     }
-                    _ => {
-                        // Generic/Nullify fallback to Hash for now
-                        format!("SHA256(CAST({} AS VARCHAR)) AS {}", col.name, col.name)
+                    MaskingStrategy::Nullify => {
+                        format!("NULL AS {}", col.name)
+                    }
+                    MaskingStrategy::Partial => {
+                        format!(
+                            "concat(left(CAST({} AS VARCHAR), 2), '***') AS {}",
+                            col.name, col.name
+                        )
+                    }
+                    MaskingStrategy::EntityPreserving => {
+                        format!(
+                            "concat('[PRESERVED_', length(CAST({} AS VARCHAR)), ']') AS {}",
+                            col.name, col.name
+                        )
                     }
                 },
-                // 🔒 OTHER
-                Some(crate::domain::governance::PolicyType::Drop) => continue,
-                // No policy or unknown -> Keep the column as is
-                _ => col.name.clone(),
+                // 🔒 ENCRYPTION
+                Some(PolicyType::Encryption) => {
+                    // Placeholder pour l'encryption, on fallback sur du Hash robuste pour l'instant
+                    format!(
+                        "encode(sha256(CAST({} AS VARCHAR)), 'hex') AS {}",
+                        col.name, col.name
+                    )
+                }
+                // 🔒 DROP
+                Some(PolicyType::Drop) => continue, // La colonne n'est pas ajoutée au SELECT
+
+                // ✅ PAS DE POLITIQUE -> On garde la colonne telle quelle
+                None => col.name.clone(),
             };
             select_clause.push(column_expr);
         }
 
+        // Si toutes les colonnes ont été "Drop", on évite de générer un "SELECT FROM" invalide
+        if select_clause.is_empty() {
+            return Ok(format!(
+                "WITH verity_governance_cte AS (\n{}\n)\nSELECT 1 AS _verity_empty FROM verity_governance_cte LIMIT 0",
+                sql
+            ));
+        }
+
         let final_columns = select_clause.join(",\n    ");
 
-        // 2. Wrap the original SQL in a CTE
-        // This is where the magic happens: we isolate the user logic to apply security on top.
         let wrapped_sql = format!(
             "WITH verity_governance_cte AS (\n{}\n)\nSELECT \n    {}\nFROM verity_governance_cte",
             sql, final_columns
@@ -129,7 +151,7 @@ mod tests {
         let result = PolicyRewriter::apply_masking(sql, &node)?;
 
         assert!(result.contains("WITH verity_governance_cte AS"));
-        assert!(result.contains("SHA256(CAST(user_id AS VARCHAR)) AS user_id"));
+        assert!(result.contains("encode(sha256(CAST(user_id AS VARCHAR)), 'hex') AS user_id"));
         Ok(())
     }
 

@@ -1,7 +1,7 @@
 name: churn_prediction_ml
 version: "0.1.0"
 profile: default
-# engine: duckdb  # Options: duckdb (default), datafusion
+
 engine: datafusion
 target-path: target
 config-paths: ["config"]

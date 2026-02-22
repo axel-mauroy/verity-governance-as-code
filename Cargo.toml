@@ -37,7 +37,7 @@ tempfile = "3.24.0"
 
 # --- Data & AI ---
 datafusion = "52.1.0"
-duckdb = { version = "1.4.3", features = ["bundled"] }
+
 minijinja = { version = "2.0", features = ["loader"] }
 
 # --- CLI ---

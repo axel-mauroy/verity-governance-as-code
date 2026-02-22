@@ -22,7 +22,7 @@ async fn main() -> anyhow::Result<()> {
 
         Commands::Clean { project_dir } => commands::clean::execute(project_dir),
 
-        Commands::Query { query, db_path } => commands::query::execute(query, db_path).await,
+        Commands::Query { query } => commands::query::execute(query).await,
 
         Commands::Generate {
             project_dir,
@@ -33,12 +33,6 @@ async fn main() -> anyhow::Result<()> {
         } => commands::generate::execute(project_dir, data_dir, owner, pii, prune),
 
         Commands::Docs { project_dir } => commands::docs::execute(project_dir),
-
-        Commands::Inspect {
-            db_path,
-            table,
-            limit,
-        } => commands::inspect::execute(db_path, table, limit),
 
         Commands::Lineage {
             project_dir,

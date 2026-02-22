@@ -23,7 +23,7 @@ pub mod ports;
 pub mod domain;
 
 // 3. Infrastructure (Adapters)
-// Implémentation technique (DuckDB, Config Files, Jinja, Discovery)
+// Implémentation technique (DataFusion, Config Files, Jinja, Discovery)
 // Dépend du Domain et des Ports.
 pub mod infrastructure;
 

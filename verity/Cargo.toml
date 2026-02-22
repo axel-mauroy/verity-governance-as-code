@@ -12,7 +12,7 @@ tokio = { workspace = true }
 anyhow = { workspace = true }
 tracing = { workspace = true }
 miette = { workspace = true }
-duckdb = { workspace = true }
+
 tracing-subscriber = { workspace = true }
 
 [dev-dependencies]
