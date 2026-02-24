@@ -1,17 +1,18 @@
 // verity-core/src/application/engine.rs
 
-use std::time::Instant;
-use tracing::{debug, error, info, instrument};
 use crate::error::VerityError;
 use crate::ports::connector::Connector;
-
+use std::time::Instant;
+use tracing::{debug, error, info, instrument};
 
 #[instrument(skip(connector, query), fields(query.preview = %preview_sql(query)))]
 pub async fn execute_query(connector: &dyn Connector, query: &str) -> Result<(), VerityError> {
     let trimmed_query = query.trim();
-    
+
     if trimmed_query.is_empty() {
-        return Err(VerityError::InternalError("Attempted to execute an empty SQL query".into()));
+        return Err(VerityError::InternalError(
+            "Attempted to execute an empty SQL query".into(),
+        ));
     }
 
     let start = Instant::now();
@@ -28,8 +29,8 @@ pub async fn execute_query(connector: &dyn Connector, query: &str) -> Result<(),
         }
         Err(e) => {
             error!(
-                target: "security", 
-                "❌ Query failed after {:.2?}: {} | SQL: {}", 
+                target: "security",
+                "❌ Query failed after {:.2?}: {} | SQL: {}",
                 duration, e, preview_sql(trimmed_query)
             );
             Err(e)

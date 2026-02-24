@@ -68,7 +68,11 @@ impl LineageReport {
 
         // Node styles
         for node in &self.nodes {
-            let label_prefix = if node.is_critical { "☢️ CRITICAL: " } else { "" };
+            let label_prefix = if node.is_critical {
+                "☢️ CRITICAL: "
+            } else {
+                ""
+            };
             if node.pii_columns.is_empty() {
                 lines.push(format!(
                     "    {}[\"{}{}  [{}]\"]",
@@ -121,7 +125,10 @@ impl LineageReport {
         for cn in self.nodes.iter().filter(|n| n.is_critical) {
             // Don't override violation style if it's already there
             if !violation_nodes.contains(&cn.name.as_str()) {
-                lines.push(format!("    style {} stroke:#f39c12,stroke-width:4px", cn.name));
+                lines.push(format!(
+                    "    style {} stroke:#f39c12,stroke-width:4px",
+                    cn.name
+                ));
             }
         }
 
@@ -171,11 +178,11 @@ impl LineageAnalyzer {
 
             let mut is_critical = false;
             for ref_name in &node.refs {
-                if let Some(upstream) = manifest.nodes.get(ref_name) {
-                    if node.security_level > upstream.security_level {
-                        is_critical = true;
-                        break;
-                    }
+                if let Some(upstream) = manifest.nodes.get(ref_name)
+                    && node.security_level > upstream.security_level
+                {
+                    is_critical = true;
+                    break;
                 }
             }
 
@@ -193,8 +200,10 @@ impl LineageAnalyzer {
         // Build edges and detect violations
         for (name, node) in &manifest.nodes {
             // Build O(1) lookup map of the downstream node's columns
-            let downstream_columns_map: HashMap<&str, &crate::domain::project::manifest::ColumnInfo> =
-                node.columns.iter().map(|c| (c.name.as_str(), c)).collect();
+            let downstream_columns_map: HashMap<
+                &str,
+                &crate::domain::project::manifest::ColumnInfo,
+            > = node.columns.iter().map(|c| (c.name.as_str(), c)).collect();
 
             for ref_name in &node.refs {
                 let upstream = match manifest.nodes.get(ref_name) {
@@ -213,7 +222,10 @@ impl LineageAnalyzer {
                             let flow = PiiFlow {
                                 column: col_name.to_string(),
                                 upstream_policy: upstream_policy.to_string(),
-                                downstream_policy: downstream_col.policy.as_ref().map(|p| p.to_string()),
+                                downstream_policy: downstream_col
+                                    .policy
+                                    .as_ref()
+                                    .map(|p| p.to_string()),
                                 secured,
                             };
 
@@ -498,8 +510,14 @@ mod tests {
 
         let report = LineageAnalyzer::analyze(&manifest);
         assert!(!report.has_violations());
-        
-        let restricted_child = report.nodes.iter().find(|n| n.name == "restricted_child").unwrap();
-        assert!(restricted_child.is_critical);
+
+        let restricted_child = report.nodes.iter().find(|n| n.name == "restricted_child");
+        assert!(
+            restricted_child.is_some(),
+            "Node 'restricted_child' should exist in report"
+        );
+        if let Some(child) = restricted_child {
+            assert!(child.is_critical);
+        }
     }
 }
