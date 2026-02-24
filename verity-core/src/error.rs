@@ -17,6 +17,9 @@ pub enum VerityError {
     // --- ERREURS GÉNÉRIQUES / APPLICATIVES ---
     #[error("Internal Error: {0}")]
     InternalError(String),
+
+    #[error("Unsafe path traversal detected: {0}")]
+    UnsafePath(String),
 }
 
 // Manual implementation to avoid duplicate enum variant but keep ergonomics

@@ -1,40 +1,41 @@
 // verity-core/src/application/clean.rs
 
+use crate::error::VerityError;
+use crate::infrastructure::config::project::load_project_config;
+use crate::infrastructure::error::InfrastructureError;
 use std::fs;
 use std::path::Path;
 
-use crate::infrastructure::config::project;
-
-use crate::error::VerityError;
-use crate::infrastructure::error::InfrastructureError;
-
 pub fn clean_project(project_dir: &Path) -> Result<(), VerityError> {
-    println!("🧹 Cleaning project artifacts...");
+    tracing::info!("🧹 Initializing Verity cleanup sequence...");
 
-    let targets = match project::load_project_config(project_dir) {
-        Ok(cfg) => cfg.clean_targets,
-        Err(_) => {
-            println!("⚠️  Could not load verity_project_conf.yaml, defaulting to 'target/'");
-            vec!["target".to_string()]
-        }
+    let config = load_project_config(project_dir).map_err(VerityError::Infrastructure)?;
+
+    let targets = if config.clean_targets.is_empty() {
+        vec!["target".to_string()]
+    } else {
+        config.clean_targets
     };
 
-    if targets.is_empty() {
-        println!("✨ Nothing to clean.");
-        return Ok(());
-    }
+    for target_rel_path in targets {
+        let full_path = project_dir.join(&target_rel_path);
 
-    for target in targets {
-        let path = project_dir.join(&target);
-        if path.exists() {
-            fs::remove_dir_all(&path)
-                .map_err(|e| VerityError::Infrastructure(InfrastructureError::Io(e)))?;
-            println!("   🗑️  Removed: {}", target);
-        } else {
-            println!("   Example: {} (not found, skipped)", target);
+        // Zero-Trust Path Traversal Guard
+        if !full_path.starts_with(project_dir) {
+            return Err(VerityError::UnsafePath(target_rel_path));
+        }
+
+        if full_path.exists() {
+            if full_path.is_dir() {
+                fs::remove_dir_all(&full_path)
+                    .map_err(|e| VerityError::Infrastructure(InfrastructureError::Io(e)))?;
+            } else {
+                fs::remove_file(&full_path)
+                    .map_err(|e| VerityError::Infrastructure(InfrastructureError::Io(e)))?;
+            }
+            println!("   🗑️  Artifact removed: {}", target_rel_path);
         }
     }
 
-    println!("✨ Project cleaned successfully!");
     Ok(())
 }
