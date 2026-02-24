@@ -25,6 +25,7 @@ pub struct LineageNode {
     pub security_level: String,
     /// Columns with a PII policy attached
     pub pii_columns: Vec<String>,
+    pub is_critical: bool,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -67,16 +68,17 @@ impl LineageReport {
 
         // Node styles
         for node in &self.nodes {
+            let label_prefix = if node.is_critical { "☢️ CRITICAL: " } else { "" };
             if node.pii_columns.is_empty() {
                 lines.push(format!(
-                    "    {}[\"{}  [{}]\"]",
-                    node.name, node.name, node.security_level
+                    "    {}[\"{}{}  [{}]\"]",
+                    node.name, label_prefix, node.name, node.security_level
                 ));
             } else {
                 let pii_list = node.pii_columns.join(", ");
                 lines.push(format!(
-                    "    {}[\"🔒 {} [{}] (PII: {})\"]",
-                    node.name, node.name, node.security_level, pii_list
+                    "    {}[\"🔒 {}{} [{}] (PII: {})\"]",
+                    node.name, label_prefix, node.name, node.security_level, pii_list
                 ));
             }
         }
@@ -92,7 +94,7 @@ impl LineageReport {
                             "    {} -->|\"🛡️ {} ({})\"| {}",
                             edge.from,
                             flow.column,
-                            flow.downstream_policy.as_deref().unwrap_or("?"),
+                            flow.downstream_policy.as_deref().unwrap_or("🚫 NO_POLICY"),
                             edge.to
                         ));
                     } else {
@@ -113,6 +115,14 @@ impl LineageReport {
             .collect();
         for vn in &violation_nodes {
             lines.push(format!("    style {} fill:#ff6b6b,stroke:#c0392b", vn));
+        }
+
+        // Style critical nodes in orange
+        for cn in self.nodes.iter().filter(|n| n.is_critical) {
+            // Don't override violation style if it's already there
+            if !violation_nodes.contains(&cn.name.as_str()) {
+                lines.push(format!("    style {} stroke:#f39c12,stroke-width:4px", cn.name));
+            }
         }
 
         lines.join("\n")
@@ -159,10 +169,21 @@ impl LineageAnalyzer {
                 .map(|c| c.name.clone())
                 .collect();
 
+            let mut is_critical = false;
+            for ref_name in &node.refs {
+                if let Some(upstream) = manifest.nodes.get(ref_name) {
+                    if node.security_level > upstream.security_level {
+                        is_critical = true;
+                        break;
+                    }
+                }
+            }
+
             nodes.push(LineageNode {
                 name: name.clone(),
                 security_level: node.security_level.to_string(),
                 pii_columns,
+                is_critical,
             });
         }
 
@@ -171,6 +192,10 @@ impl LineageAnalyzer {
 
         // Build edges and detect violations
         for (name, node) in &manifest.nodes {
+            // Build O(1) lookup map of the downstream node's columns
+            let downstream_columns_map: HashMap<&str, &crate::domain::project::manifest::ColumnInfo> =
+                node.columns.iter().map(|c| (c.name.as_str(), c)).collect();
+
             for ref_name in &node.refs {
                 let upstream = match manifest.nodes.get(ref_name) {
                     Some(u) => u,
@@ -182,15 +207,13 @@ impl LineageAnalyzer {
                 // ── Check 1: PII Column Policy Propagation ───────────
                 if let Some(upstream_pii) = pii_map.get(ref_name.as_str()) {
                     for (col_name, upstream_policy) in upstream_pii {
-                        // Does the downstream node have this column?
-                        if let Some(downstream_col) =
-                            node.columns.iter().find(|c| c.name == *col_name)
-                        {
+                        // O(1) Does the downstream node have this column?
+                        if let Some(downstream_col) = downstream_columns_map.get(col_name) {
                             let secured = downstream_col.policy.is_some();
                             let flow = PiiFlow {
                                 column: col_name.to_string(),
                                 upstream_policy: upstream_policy.to_string(),
-                                downstream_policy: downstream_col.policy.map(|p| p.to_string()),
+                                downstream_policy: downstream_col.policy.as_ref().map(|p| p.to_string()),
                                 secured,
                             };
 
@@ -475,5 +498,8 @@ mod tests {
 
         let report = LineageAnalyzer::analyze(&manifest);
         assert!(!report.has_violations());
+        
+        let restricted_child = report.nodes.iter().find(|n| n.name == "restricted_child").unwrap();
+        assert!(restricted_child.is_critical);
     }
 }
