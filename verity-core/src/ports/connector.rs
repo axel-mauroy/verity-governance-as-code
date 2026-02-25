@@ -31,7 +31,7 @@ pub trait Connector: Send + Sync {
     async fn fetch_columns(&self, table_name: &str) -> Result<Vec<ColumnSchema>, VerityError>;
 
     /// Register a data source (e.g. CSV file) as a named table/view.
-    async fn register_source(&self, name: &str, path: &str) -> Result<(), VerityError>;
+    async fn register_source(&self, name: &str, path: &std::path::Path) -> Result<(), VerityError>;
 
     /// Materialize a SQL query as a table or view.
     async fn materialize(

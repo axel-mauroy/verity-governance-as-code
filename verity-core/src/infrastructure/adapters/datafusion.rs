@@ -125,9 +125,12 @@ impl Connector for DataFusionConnector {
         Ok(columns)
     }
 
-    async fn register_source(&self, name: &str, path: &str) -> Result<(), VerityError> {
+    async fn register_source(&self, name: &str, path: &std::path::Path) -> Result<(), VerityError> {
+        let path_str = path.to_str().ok_or_else(|| {
+            VerityError::InternalError(format!("Invalid path for source {}: {:?}", name, path))
+        })?;
         self.ctx
-            .register_csv(name, path, CsvReadOptions::default())
+            .register_csv(name, path_str, CsvReadOptions::default())
             .await
             .map_err(|e| {
                 VerityError::Infrastructure(InfrastructureError::Database(

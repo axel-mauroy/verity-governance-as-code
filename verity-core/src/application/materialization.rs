@@ -7,15 +7,12 @@ use crate::ports::connector::Connector;
 pub struct Materializer;
 
 impl Materializer {
-    /// Génère et exécute le DDL (CREATE TABLE/VIEW) pour un modèle donné.
     pub async fn materialize(
         connector: &dyn Connector,
         model_name: &str,
         executed_sql: &str,
         config: &NodeConfig,
     ) -> Result<String, VerityError> {
-        // 1. Résolution du Type (Domaine Enum)
-        // Par défaut, si non spécifié, c'est une Vue.
         let strategy = config
             .materialized
             .as_ref()
@@ -23,13 +20,10 @@ impl Materializer {
 
         let is_protected = config.protected;
 
-        // 2. Gestion Spéciale : Ephemeral
-        // Un modèle éphémère ne crée aucun objet en base de données.
         if matches!(strategy, MaterializationType::Ephemeral) {
             return Ok("ephemeral".to_string());
         }
 
-        // 3. Déterminer le type de matérialisation
         let mat_type = match (strategy, is_protected) {
             (MaterializationType::Table, _) => "table",
             (MaterializationType::View, _) => "view",
@@ -43,9 +37,7 @@ impl Materializer {
             (MaterializationType::Ephemeral, _) => unreachable!(),
         };
 
-        // 4. Construire le SQL en tenant compte du mode protected
         let final_sql = if is_protected {
-            // Protected mode: use IF NOT EXISTS semantics
             match mat_type {
                 "table" => format!(
                     "CREATE TABLE IF NOT EXISTS {} AS {}",
@@ -58,7 +50,6 @@ impl Materializer {
                 _ => unreachable!(),
             }
         } else {
-            // Standard: delegate fully to the connector
             return connector
                 .materialize(model_name, executed_sql, mat_type)
                 .await
@@ -70,7 +61,6 @@ impl Materializer {
                 });
         };
 
-        // 5. Execute protected DDL directly
         connector.execute(&final_sql).await.map_err(|e| {
             VerityError::InternalError(format!(
                 "Model '{}' failed.\n    🛑 DB Error: {}\n    📄 Query: {}",
@@ -91,7 +81,6 @@ mod tests {
     use async_trait::async_trait;
     use std::sync::{Arc, Mutex};
 
-    // --- MOCK CONNECTOR ---
     #[derive(Clone)]
     struct MockConnector {
         pub executed_queries: Arc<Mutex<Vec<String>>>,
@@ -117,7 +106,11 @@ mod tests {
         async fn fetch_columns(&self, _table_name: &str) -> Result<Vec<ColumnSchema>, VerityError> {
             Ok(vec![])
         }
-        async fn register_source(&self, _name: &str, _path: &str) -> Result<(), VerityError> {
+        async fn register_source(
+            &self,
+            _name: &str,
+            _path: &std::path::Path,
+        ) -> Result<(), VerityError> {
             Ok(())
         }
         async fn materialize(
@@ -143,7 +136,6 @@ mod tests {
 
         let result = Materializer::materialize(&connector, "my_model", "SELECT 1", &config).await?;
 
-        // Non-protected mode delegates to connector.materialize() which returns the type
         assert_eq!(result, "view");
         Ok(())
     }
@@ -160,7 +152,6 @@ mod tests {
         let result =
             Materializer::materialize(&connector, "my_table", "SELECT * FROM src", &config).await?;
 
-        // Non-protected mode delegates to connector.materialize() which returns the type
         assert_eq!(result, "table");
         Ok(())
     }

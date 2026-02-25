@@ -90,7 +90,7 @@ where
 
         if absolute_path.exists() {
             connector
-                .register_source(&source.name, &absolute_path.to_string_lossy())
+                .register_source(&source.name, &absolute_path)
                 .await?;
         } else {
             println!(

@@ -170,7 +170,11 @@ mod tests {
         async fn fetch_columns(&self, _table_name: &str) -> Result<Vec<ColumnSchema>, VerityError> {
             Ok(self.columns_return.clone())
         }
-        async fn register_source(&self, _name: &str, _path: &str) -> Result<(), VerityError> {
+        async fn register_source(
+            &self,
+            _name: &str,
+            _path: &std::path::Path,
+        ) -> Result<(), VerityError> {
             Ok(())
         }
         async fn materialize(
