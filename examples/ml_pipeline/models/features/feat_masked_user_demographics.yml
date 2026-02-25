@@ -1,25 +1,38 @@
 schema:
-- model_name: feat_user_demographics_masked
-  description: Version 1 of feat_user_demographics_masked
+- model_name: feat_masked_user_demographics
+  description: This model is used to compute user demographics features
   config:
     materialized: table
+    security_level: internal
     data_contract: false
     data_catalog: false
     version: 1
     status: provisioning
     latest: true
     governance:
-      tech_owner: Axel Mauroy
+      business_owner: super_marketing@example.com
+      tech_owner: ml_engineering@example.com
   columns:
   - name: email_hash
     description: Auto-detected
+    tests:
+    - not_null
   - name: subscription_tier
     description: Auto-detected
+    tests:
+    - not_null
   - name: user_id
     description: Auto-detected
+    tests:
+    - unique
+    - not_null
   - name: name_masked
     description: Auto-detected
   - name: signup_date
     description: Auto-detected
+    tests:
+    - not_null
   - name: region
     description: Auto-detected
+    tests:
+    - not_null

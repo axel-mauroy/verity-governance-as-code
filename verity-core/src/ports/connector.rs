@@ -44,6 +44,26 @@ pub trait Connector: Send + Sync {
     /// Execute a query and return a single scalar u64 value.
     async fn query_scalar(&self, query: &str) -> Result<u64, VerityError>;
 
+    /// Fetch the average value of multiple columns in a single query pass.
+    /// Returns a HashMap<column_name, avg_value>.
+    /// Default implementation falls back to individual queries (override for performance).
+    async fn fetch_column_averages(
+        &self,
+        table_name: &str,
+        columns: &[&str],
+    ) -> Result<std::collections::HashMap<String, f64>, VerityError> {
+        let mut result = std::collections::HashMap::new();
+        for &col in columns {
+            let query = format!("SELECT AVG(\"{}\") FROM \"{}\"", col, table_name);
+            // query_scalar returns u64 — this default is a lossy fallback
+            // Engines should override this with a proper float-aware implementation
+            if let Ok(v) = self.query_scalar(&query).await {
+                result.insert(col.to_string(), v as f64);
+            }
+        }
+        Ok(result)
+    }
+
     /// Return the engine name (for logging purposes).
     fn engine_name(&self) -> &str;
 

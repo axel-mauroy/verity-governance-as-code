@@ -1,15 +1,17 @@
 schema:
-- model_name: train_churn_dataset_v1
-  description: Version 1 of train_churn_dataset_v1
+- model_name: train_churn_dataset
+  description: This model is used to train the churn prediction to improve retention.
   config:
     materialized: table
+    security_level: internal
     data_contract: false
     data_catalog: false
     version: 1
     status: provisioning
     latest: true
     governance:
-      tech_owner: Axel Mauroy
+      business_owner: super_marketing@example.com
+      tech_owner: ml_engineering@example.com
   columns:
   - name: api_usage_count
     description: Auto-detected
@@ -25,5 +27,8 @@ schema:
     description: Auto-detected
   - name: user_id
     description: Auto-detected
+    tests:
+    - unique
+    - not_null
   - name: signup_date
     description: Auto-detected

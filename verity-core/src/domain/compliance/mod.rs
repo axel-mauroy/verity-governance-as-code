@@ -2,3 +2,4 @@
 
 pub mod anomaly;
 pub mod config;
+pub mod zscore;

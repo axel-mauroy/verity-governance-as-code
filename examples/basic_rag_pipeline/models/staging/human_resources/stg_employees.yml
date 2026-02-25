@@ -1,7 +1,16 @@
 schema:
 - model_name: stg_employees
   description: "Employee records"
-
+  config:
+    materialized: table
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      business_owner: super_hr@example.com
+      tech_owner: data_engineering@example.com
   columns:
   - name: department
     description: Auto-detected by Verity

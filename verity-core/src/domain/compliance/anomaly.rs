@@ -19,10 +19,20 @@ pub enum AnomalyError {
 }
 
 /// Structure to persist the state between runs
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Serialize, Deserialize, Default, Clone)]
 pub struct ModelExecutionState {
     pub last_run_at: String,
     pub row_count: u64,
+    // Store arbitrary ML metrics (e.g. "avg_churn_prob" -> { "mean": 0.12, "stddev": 0.05, "count": 100 })
+    #[serde(default)]
+    pub ml_metrics: std::collections::HashMap<String, MetricState>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct MetricState {
+    pub mean: f64,
+    pub variance: f64,
+    pub count: u64,
 }
 
 pub struct RowCountCheck;

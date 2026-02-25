@@ -13,6 +13,7 @@ use crate::infrastructure::adapters::governance_optimizer::GovernanceRule;
 use crate::infrastructure::error::{DatabaseError, InfrastructureError};
 use crate::ports::connector::{ColumnSchema, Connector};
 
+use datafusion::arrow::array::Array;
 use datafusion::arrow::datatypes::DataType;
 use datafusion::logical_expr::{Volatility, create_udf};
 
@@ -260,6 +261,61 @@ impl Connector for DataFusionConnector {
 
     fn engine_name(&self) -> &str {
         "datafusion"
+    }
+
+    async fn fetch_column_averages(
+        &self,
+        table_name: &str,
+        columns: &[&str],
+    ) -> Result<std::collections::HashMap<String, f64>, VerityError> {
+        if columns.is_empty() {
+            return Ok(std::collections::HashMap::new());
+        }
+
+        // Single query: SELECT AVG("c1") AS c1, AVG("c2") AS c2, ... FROM "table"
+        let select_parts: Vec<String> = columns
+            .iter()
+            .map(|c| format!("AVG(\"{}\") AS \"{}\"", c, c))
+            .collect();
+        let query = format!("SELECT {} FROM \"{}\"", select_parts.join(", "), table_name);
+
+        let df = self.ctx.sql(&query).await.map_err(|e| {
+            VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
+        })?;
+        let batches = df.collect().await.map_err(|e| {
+            VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
+        })?;
+
+        let mut result = std::collections::HashMap::new();
+
+        if let Some(batch) = batches.first()
+            && batch.num_rows() > 0
+        {
+            use datafusion::arrow::array::{Float32Array, Float64Array};
+
+            for (i, &col_name) in columns.iter().enumerate() {
+                let col = batch.column(i);
+                let val = if let Some(arr) = col.as_any().downcast_ref::<Float64Array>() {
+                    if arr.is_valid(0) {
+                        Some(arr.value(0))
+                    } else {
+                        None
+                    }
+                } else if let Some(arr) = col.as_any().downcast_ref::<Float32Array>() {
+                    if arr.is_valid(0) {
+                        Some(arr.value(0) as f64)
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                };
+                if let Some(v) = val {
+                    result.insert(col_name.to_string(), v);
+                }
+            }
+        }
+        Ok(result)
     }
 
     fn supports_plan_governance(&self) -> bool {

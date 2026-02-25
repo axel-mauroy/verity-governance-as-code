@@ -1,0 +1,39 @@
+schema:
+- model_name: monit_prediction_drift
+  description: This model is used to monitor the churn prediction model drift
+  config:
+    materialized: table
+    security_level: internal
+    data_contract: false
+    data_catalog: false
+    version: 1
+    status: provisioning
+    latest: true
+    governance:
+      business_owner: None
+      tech_owner: ml_engineering@example.com
+  columns:
+  - name: min_churn_prob
+    description: Minimum churn probability
+  - name: prediction_date
+    description: Date of prediction
+  - name: avg_churn_prob
+    description: Average churn probability
+  - name: max_churn_prob
+    description: Maximum churn probability
+  - name: prediction_count
+    description: Number of predictions
+  - name: model_id
+    description: Model ID
+    tests:
+    - not_null
+  compliance:
+    post_flight:
+      - check: row_count_anomaly
+        threshold: 0.1
+        severity: warning
+      - check: z_score_anomaly
+        column: avg_churn_prob
+        threshold: 3.0
+        severity: error
+

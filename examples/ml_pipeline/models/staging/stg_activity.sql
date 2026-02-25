@@ -1,12 +1,4 @@
 -- models/staging/stg_activity.sql
-/* 
-config:
-  name: stg_activity
-  materialized: view
-  header: true
-  governance:
-    security_level: internal
-*/
 
 SELECT 
     activity_id,

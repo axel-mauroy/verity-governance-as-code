@@ -6,6 +6,8 @@ use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 
+use crate::domain::compliance::anomaly::MetricState;
+
 // --- Domain Imports ---
 use crate::domain::compliance::anomaly::{AnomalyError, ModelExecutionState, RowCountCheck};
 use crate::domain::error::DomainError;
@@ -32,7 +34,7 @@ pub struct RunResult {
     pub errors: Vec<String>,
 }
 
-/// Contexte injecté dans chaque tâche asynchrone pour éviter l'enfer des paramètres
+/// Context injected in each
 struct PipelineContext<'a, T, S> {
     renderer: &'a T,
     schema_source: &'a S,
@@ -42,7 +44,7 @@ struct PipelineContext<'a, T, S> {
     col_policies: &'a [ColumnPolicy],
     strict_mode: bool,
     default_anomaly_threshold: f64,
-    prev_row_count: Option<u64>,
+    prev_state: Option<ModelExecutionState>,
 }
 
 pub async fn run_pipeline<M, T, S>(
@@ -175,13 +177,13 @@ where
                 if node.resource_type != ResourceType::Model {
                     return None;
                 }
-                let prev_rows = state_store.get(node_name).map(|s| s.row_count);
-                Some((node, prev_rows))
+                let prev_state = state_store.get(node_name).cloned();
+                Some((node, prev_state))
             })
             .collect();
 
         // Create a stream of futures for the current layer
-        let futures = layer_nodes.into_iter().map(|(node, prev_row_count)| {
+        let futures = layer_nodes.into_iter().map(|(node, prev_state)| {
             let renderer = template_engine.clone();
             let policies = col_policies.clone();
             let target_dir = target_dir.clone();
@@ -197,7 +199,7 @@ where
                     col_policies: &policies,
                     strict_mode,
                     default_anomaly_threshold,
-                    prev_row_count,
+                    prev_state,
                 };
                 let res = execute_node(&node, ctx).await;
                 (node.name.clone(), res)
@@ -209,13 +211,14 @@ where
 
         while let Some((node_name, res)) = stream.next().await {
             match res {
-                Ok(current_rows) => {
+                Ok((current_rows, ml_metrics)) => {
                     println!("    ✅ Built model: {}", node_name);
                     state_store.insert(
                         node_name,
                         ModelExecutionState {
                             last_run_at: chrono::Utc::now().to_rfc3339(),
                             row_count: current_rows,
+                            ml_metrics,
                         },
                     );
                     success_count += 1;
@@ -254,7 +257,7 @@ where
 async fn execute_node<T, S>(
     node: &ManifestNode,
     ctx: PipelineContext<'_, T, S>,
-) -> Result<u64, VerityError>
+) -> Result<(u64, HashMap<String, MetricState>), VerityError>
 where
     T: TemplateEngine,
     S: SchemaSource,
@@ -340,15 +343,22 @@ where
 
     // --- F. COMPLIANCE (Anomaly Detection) ---
     let current_rows = count_rows(ctx.connector, &node.name).await?;
-    check_compliance(
+    let mut new_metrics = HashMap::new();
+
+    let check_res = check_compliance(
         node,
         current_rows,
-        ctx.prev_row_count,
+        ctx.connector,
+        ctx.prev_state.as_ref(),
         ctx.strict_mode,
         ctx.default_anomaly_threshold,
-    )?;
+        &mut new_metrics,
+    )
+    .await;
 
-    Ok(current_rows)
+    check_res?;
+
+    Ok((current_rows, new_metrics))
 }
 
 fn save_artifact(
@@ -366,12 +376,16 @@ fn save_artifact(
     Ok(())
 }
 
-fn check_compliance(
+use crate::domain::compliance::zscore::{ZScoreCheck, ZScoreError};
+
+async fn check_compliance(
     node: &ManifestNode,
     current_rows: u64,
-    prev_rows: Option<u64>,
+    connector: &dyn Connector,
+    prev_state: Option<&ModelExecutionState>,
     strict_mode: bool,
     default_anomaly_threshold: f64,
+    new_metrics: &mut HashMap<String, MetricState>,
 ) -> Result<(), VerityError> {
     let compliance = match &node.compliance {
         Some(c) => c,
@@ -379,6 +393,24 @@ fn check_compliance(
     };
 
     if let Some(checks) = &compliance.post_flight {
+        // Phase 1: Collect all z_score columns upfront (single batched query)
+        let zscore_columns: Vec<&str> = checks
+            .iter()
+            .filter(|c| c.check == "z_score_anomaly")
+            .filter_map(|c| c.params.get("column").and_then(|v| v.as_str()))
+            .collect();
+
+        // Phase 2: Fetch all averages in ONE query — real f64, no u64 truncation!
+        let column_averages = if zscore_columns.is_empty() {
+            std::collections::HashMap::new()
+        } else {
+            connector
+                .fetch_column_averages(&node.name, &zscore_columns)
+                .await
+                .unwrap_or_default()
+        };
+
+        // Phase 3: Run all checks using the pre-fetched values
         for check in checks {
             if check.check == "row_count_anomaly" {
                 let threshold_val = check
@@ -392,25 +424,85 @@ fn check_compliance(
                     threshold,
                     prev,
                     curr,
-                }) = RowCountCheck::validate(current_rows, prev_rows, threshold_val)
-                {
+                }) = RowCountCheck::validate(
+                    current_rows,
+                    prev_state.map(|s| s.row_count),
+                    threshold_val,
+                ) {
                     let msg = format!(
                         "Anomaly detected on {}: Rows changed by {:.2}% (Threshold {:.2}%). Prev: {}, Curr: {}",
                         node.name, deviation, threshold, prev, curr
                     );
+                    handle_anomaly_error(msg, check.severity.as_str(), strict_mode)?;
+                }
+            } else if check.check == "z_score_anomaly" {
+                let column = match check.params.get("column").and_then(|v| v.as_str()) {
+                    Some(c) => c,
+                    None => {
+                        return Err(VerityError::Domain(DomainError::ComplianceError(
+                            "z_score_anomaly requires a 'column' parameter".to_string(),
+                        )));
+                    }
+                };
 
-                    if check.severity == "error" {
-                        if strict_mode {
-                            eprintln!("❌  [Strict] {}", msg);
-                            return Err(VerityError::Domain(DomainError::ComplianceError(msg)));
+                let threshold_val = check
+                    .params
+                    .get("threshold")
+                    .and_then(|v| v.as_f64())
+                    .unwrap_or(3.0);
+
+                match column_averages.get(column) {
+                    None => {
+                        eprintln!(
+                            "⚠️  Could not compute average of '{}' for Z-Score check (column may not exist or contain nulls)",
+                            column
+                        );
+                    }
+                    Some(&val) => {
+                        let prev_metric =
+                            prev_state.and_then(|s| s.ml_metrics.get(column).cloned());
+                        let (res, updated_state) = ZScoreCheck::validate_and_update(
+                            column,
+                            val,
+                            prev_metric,
+                            threshold_val,
+                        );
+                        new_metrics.insert(column.to_string(), updated_state);
+
+                        if let Err(e) = res {
+                            match e {
+                                ZScoreError::NotEnoughHistory(metric) => {
+                                    println!(
+                                        "ℹ️  Z-Score [{}]: First run — calibration in progress (2 runs required to detect drift)",
+                                        metric
+                                    );
+                                }
+                                ZScoreError::AnomalyDetected { .. } => {
+                                    handle_anomaly_error(
+                                        e.to_string(),
+                                        check.severity.as_str(),
+                                        strict_mode,
+                                    )?;
+                                }
+                            }
                         }
-                        eprintln!("⚠️  [Bypass] {} (Strict Mode: OFF)", msg);
-                    } else {
-                        eprintln!("⚠️  {}", msg);
                     }
                 }
             }
         }
+    }
+    Ok(())
+}
+
+fn handle_anomaly_error(msg: String, severity: &str, strict_mode: bool) -> Result<(), VerityError> {
+    if severity == "error" {
+        if strict_mode {
+            eprintln!("❌  [Strict] {}", msg);
+            return Err(VerityError::Domain(DomainError::ComplianceError(msg)));
+        }
+        eprintln!("⚠️  [Bypass] {} (Strict Mode: OFF)", msg);
+    } else {
+        eprintln!("⚠️  {}", msg);
     }
     Ok(())
 }

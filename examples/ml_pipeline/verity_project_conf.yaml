@@ -45,5 +45,5 @@ quality:
     - check: not_null
       severity: error
     - check: row_count_anomaly
-      threshold: 0.1
+      threshold: 0.08
       severity: warning

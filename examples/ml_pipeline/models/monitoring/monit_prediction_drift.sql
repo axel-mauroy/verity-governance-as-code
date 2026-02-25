@@ -1,12 +1,4 @@
 -- models/monitoring/mon_prediction_drift.sql
-/* 
-config:
-  name: mon_prediction_drift
-  materialized: view
-  governance:
-    security_level: internal
-    owner: data_science
-*/
 
 SELECT 
     prediction_date,

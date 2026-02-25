@@ -3,14 +3,15 @@ schema:
   description: Raw user data with PII
   config:
     materialized: table
-    security_level: internal
+    security_level: confidential
     data_contract: false
     data_catalog: false
     version: 1
     status: provisioning
     latest: true
     governance:
-      tech_owner: Axel Mauroy
+      business_owner: super_marketing@example.com
+      tech_owner: data_engineering@example.com
   columns:
   - name: user_id
     tests:

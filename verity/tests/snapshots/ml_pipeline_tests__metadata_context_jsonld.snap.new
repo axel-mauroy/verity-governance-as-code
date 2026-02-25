@@ -1,5 +1,6 @@
 ---
 source: verity/tests/ml_pipeline_tests.rs
+assertion_line: 188
 expression: content
 ---
 {
