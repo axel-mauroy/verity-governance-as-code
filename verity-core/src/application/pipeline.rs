@@ -41,6 +41,7 @@ struct PipelineContext<'a, T, S> {
     project_dir: &'a Path,
     col_policies: &'a [ColumnPolicy],
     strict_mode: bool,
+    default_anomaly_threshold: f64,
     prev_row_count: Option<u64>,
 }
 
@@ -148,6 +149,7 @@ where
     // 5. PARALLEL EXECUTION LOOP
     let col_policies = Arc::new(config.governance.pii_detection.column_policies.clone());
     let strict_mode = config.governance.strict || std::env::var("VERITY_STRICT").is_ok();
+    let default_anomaly_threshold = config.governance.default_anomaly_threshold;
 
     println!(
         "    {} Strict Governance Mode: {}",
@@ -194,6 +196,7 @@ where
                     project_dir: &project_dir,
                     col_policies: &policies,
                     strict_mode,
+                    default_anomaly_threshold,
                     prev_row_count,
                 };
                 let res = execute_node(&node, ctx).await;
@@ -337,7 +340,13 @@ where
 
     // --- F. COMPLIANCE (Anomaly Detection) ---
     let current_rows = count_rows(ctx.connector, &node.name).await?;
-    check_compliance(node, current_rows, ctx.prev_row_count, ctx.strict_mode)?;
+    check_compliance(
+        node,
+        current_rows,
+        ctx.prev_row_count,
+        ctx.strict_mode,
+        ctx.default_anomaly_threshold,
+    )?;
 
     Ok(current_rows)
 }
@@ -362,6 +371,7 @@ fn check_compliance(
     current_rows: u64,
     prev_rows: Option<u64>,
     strict_mode: bool,
+    default_anomaly_threshold: f64,
 ) -> Result<(), VerityError> {
     let compliance = match &node.compliance {
         Some(c) => c,
@@ -375,7 +385,7 @@ fn check_compliance(
                     .params
                     .get("threshold")
                     .and_then(|v| v.as_f64())
-                    .unwrap_or(0.1);
+                    .unwrap_or(default_anomaly_threshold);
 
                 if let Err(AnomalyError::DeviationExceeded {
                     deviation,

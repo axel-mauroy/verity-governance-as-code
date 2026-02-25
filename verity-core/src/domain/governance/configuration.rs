@@ -14,10 +14,17 @@ pub struct GovernanceConfig {
 
     #[serde(default = "default_true")]
     pub strict: bool,
+
+    #[serde(default = "default_anomaly_threshold")]
+    pub default_anomaly_threshold: f64,
 }
 
 fn default_true() -> bool {
     true
+}
+
+fn default_anomaly_threshold() -> f64 {
+    0.1
 }
 
 impl Default for GovernanceConfig {
@@ -27,6 +34,7 @@ impl Default for GovernanceConfig {
             data_quality: QualityConfig::default(),
             default_security_level: None,
             strict: true,
+            default_anomaly_threshold: 0.1,
         }
     }
 }
