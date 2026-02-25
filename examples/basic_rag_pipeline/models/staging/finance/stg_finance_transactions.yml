@@ -1,19 +1,20 @@
 schema:
   - model_name: stg_finance_transactions
-    description: "Transactions bancaires nettoyées et conformes."
+    description: "Banking transactions cleaned and compliant."
     
     config:
-    materialized: table
-    data_contract: false
-    data_catalog: false
-    version: 1
-    latest: false
-    status: erased
-    erasure_date: "2024-01-31"
-    replacement_model: "stg_finance_transactions_v2"
-    governance:
-      business_owner: super_finance@example.com
-      tech_owner: data_engineering@example.com
+      materialized: table
+      security_level: confidential
+      data_contract: false
+      data_catalog: false
+      version: 1
+      latest: false
+      status: erased
+      erasure_date: "2024-01-31"
+      replacement_model: "stg_finance_transactions_v2"
+      governance:
+        business_owner: super_finance@example.com
+        tech_owner: data_engineering@example.com
     
     compliance:
       pre_flight:
@@ -46,18 +47,21 @@ schema:
           - not_null
 
   - model_name: stg_finance_transactions_v2
-    description: "Transactions bancaires nettoyées et conformes."
+    description: "Banking transactions cleaned and compliant."
     
     config:
       materialized: table
-      tech_owner: "finance_data_team@@verity.com"
-      business_owner: "finance_team@@verity.com"
       security_level: confidential
+      data_contract: false
+      data_catalog: false
       version: 2
-      latest: true
+      latest: false
       status: deprecated
       deprecation_date: "2024-12-31"
       replacement_model: "stg_finance_transactions_v3"
+      governance:
+        business_owner: super_finance@example.com
+        tech_owner: data_engineering@example.com
     
     compliance:
       pre_flight:
@@ -91,16 +95,19 @@ schema:
 
 
   - model_name: stg_finance_transactions_v3
-    description: "Transactions bancaires nettoyées et conformes."
+    description: "Banking transactions cleaned and compliant."
     
     config:
       materialized: table
-      tech_owner: "finance_data_team@@verity.com"
-      business_owner: "finance_team@@verity.com"
       security_level: confidential
+      data_contract: false
+      data_catalog: false
       version: 3
       latest: true
       status: active
+      governance:
+        business_owner: super_finance@example.com
+        tech_owner: data_engineering@example.com
     
     compliance:
       pre_flight:

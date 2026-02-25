@@ -122,10 +122,29 @@ impl GraphDiscovery {
                 {
                     // Per-model YAML can be either SchemaFile or direct ModelSchema
                     if let Ok(parsed) = serde_yaml::from_str::<SchemaFile>(&content) {
-                        // CORRECTION: parsed.models est un Vec direct, pas une Option
+                        // Guard: at most one `latest: true` per model family in this YAML file.
+                        // A family is identified by the base name (e.g. "stg_finance_transactions").
+                        let latest_count = parsed
+                            .models
+                            .iter()
+                            .filter(|m| {
+                                // Keep only models in this file's family
+                                (m.model_name == model_name
+                                    || m.model_name.starts_with(&format!("{}_v", model_name)))
+                                    && m.config.latest
+                            })
+                            .count();
+
+                        if latest_count > 1 {
+                            return Err(InfrastructureError::ConfigError(format!(
+                                "Lifecycle violation in {:?}: {} versions of '{}' have `latest: true`. \
+                                 Only one version may be the latest at a time. \
+                                 Set `latest: false` on all but the active version.",
+                                yaml_path, latest_count, model_name
+                            )));
+                        }
+
                         for model in parsed.models {
-                            // CORRECTION: model.name -> model.model_name
-                            // On vérifie si le nom du modèle correspond au fichier ou si c'est une version
                             if model.model_name == model_name
                                 || model.model_name.starts_with(&format!("{}_v", model_name))
                             {
