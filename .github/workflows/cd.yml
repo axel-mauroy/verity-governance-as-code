@@ -1,0 +1,56 @@
+name: Verity CD (Releases)
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: 🚀 Build & Release (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            suffix: linux-amd64
+            binary: target/release/verity
+          - os: macos-latest
+            suffix: macos-universal
+            binary: target/release/verity
+          - os: windows-latest
+            suffix: windows-amd64
+            binary: target/release/verity.exe
+
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+
+      - name: 🦀 Setup Rust Toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: 📦 Cache Dependencies
+        uses: swatinem/rust-cache@v2
+
+      - name: 🏗️ Build Binary (Release)
+        run: cargo build --release --bin verity
+
+      - name: 🏷️ Rename Binary for Upload
+        shell: bash
+        run: |
+          mkdir -p assets
+          cp ${{ matrix.binary }} assets/verity-${{ matrix.suffix }}${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+
+      - name: 🚀 Create / Update GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: assets/verity-*
+          generate_release_notes: true
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
