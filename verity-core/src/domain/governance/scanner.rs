@@ -55,7 +55,7 @@ impl PiiScanner {
                 Err(e) => {
                     // Strict governance: a malformed security policy is a critical error.
                     return Err(DomainError::GovernanceViolation {
-                        _asset_name: format!("Config Regex: {}", pattern.name),
+                        asset_name: format!("Config Regex: {}", pattern.name),
                         child_level: "Invalid Syntax".to_string(),
                         parent_level: e.to_string(),
                     });

@@ -5,14 +5,14 @@ use thiserror::Error;
 
 #[derive(Error, Debug, Diagnostic)]
 pub enum DomainError {
-    #[error("Governance violation: ({_asset_name})")]
+    #[error("Governance violation: ({asset_name})")]
     #[diagnostic(
         code(verity::domain::governance),
         help("Security level '{child_level}' cannot depend on '{parent_level}' without masking.")
     )]
     #[allow(unused_assignments)]
     GovernanceViolation {
-        _asset_name: String,
+        asset_name: String,
         child_level: String,
         parent_level: String,
     },

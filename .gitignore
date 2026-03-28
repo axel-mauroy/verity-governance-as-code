@@ -29,6 +29,8 @@ check_output.txt
 .env
 .env.*
 !.env.example
+.agents/brain/
+.agents/logs/
 
 # ============================
 # Data (large / generated)

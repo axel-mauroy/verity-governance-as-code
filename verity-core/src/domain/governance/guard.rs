@@ -29,7 +29,7 @@ impl GovernanceGuard {
             match v.action {
                 PiiAction::Block => {
                     let err = DomainError::GovernanceViolation {
-                        _asset_name: context.to_string(),
+                        asset_name: context.to_string(),
                         child_level: format!("{:?}", v.severity),
                         parent_level: format!("Rule: {}", v.rule_name),
                     };
@@ -77,7 +77,7 @@ impl GovernanceGuard {
             for v in violations {
                 if matches!(v.severity, PiiSeverity::High | PiiSeverity::Critical) {
                     return Err(DomainError::GovernanceViolation {
-                        _asset_name: "Security Boundary Check".into(),
+                        asset_name: "Security Boundary Check".into(),
                         child_level: format!("{:?}", v.severity),
                         parent_level: format!("{:?} Environment", current_level),
                     });
@@ -118,8 +118,8 @@ mod tests {
         let result = guard.audit_data("This contains a SECRET value", "test_context");
         assert!(result.is_err());
         match result {
-            Err(DomainError::GovernanceViolation { _asset_name, .. }) => {
-                assert_eq!(_asset_name, "test_context");
+            Err(DomainError::GovernanceViolation { asset_name, .. }) => {
+                assert_eq!(asset_name, "test_context");
                 Ok(())
             }
             _ => bail!("Expected GovernanceViolation"),
