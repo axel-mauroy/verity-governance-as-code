@@ -16,7 +16,7 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Commands {
-    /// 🚀 Runs the data pipeline (Models -> SQL -> Validation)
+    /// Runs the data pipeline (Models -> SQL -> Validation)
     Run {
         /// Project directory
         #[arg(long, default_value = ".")]
@@ -27,16 +27,23 @@ pub enum Commands {
         select: Option<String>,
     },
 
-    /// 🧹 Cleans build artifacts (target/ folder)
+    /// Cleans build artifacts (target/ folder)
     Clean {
         #[arg(long, default_value = ".")]
         project_dir: PathBuf,
     },
 
-    /// ⚡ Executes a raw SQL query (Ad-hoc)
-    Query { query: String },
+    /// Executes a raw SQL query (Ad-hoc)
+    Query {
+        /// The SQL query to execute
+        query: String,
 
-    /// 🕵️‍♀️ Scans data directory and generates 'models/sources.yaml'
+        /// Project directory
+        #[arg(long, default_value = ".")]
+        project_dir: PathBuf,
+    },
+
+    /// Scans data directory and generates 'models/sources.yaml'
     Generate {
         /// Project directory
         #[arg(long, default_value = ".")]
@@ -59,14 +66,14 @@ pub enum Commands {
         prune: bool,
     },
 
-    /// 📚 Generates the Data Catalog (HTML/JSON)
+    /// Generates the Data Catalog (HTML/JSON)
     Docs {
         /// Project directory
         #[arg(long, default_value = ".")]
         project_dir: PathBuf,
     },
 
-    /// 🔗 Analyzes data lineage and detects unsecured PII flows
+    /// Analyzes data lineage and detects unsecured PII flows
     Lineage {
         /// Project directory
         #[arg(long, default_value = ".")]

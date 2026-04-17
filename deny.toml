@@ -29,17 +29,14 @@ allow = [
     "Unlicense",
     "0BSD",
     "Unicode-3.0",
-    "Unicode-DFS-2016",
     "CC0-1.0",
     "MIT-0",
     "BSL-1.0",
-    "CDLA-Permissive-2.0",
-    "OpenSSL",
 ]
 confidence-threshold = 0.8
 
 exceptions = [
-    { allow = ["CDLA-Permissive-2.0"], crate = "bzip2-sys" },
+    { allow = ["CDLA-Permissive-2.0"], crate = "webpki-roots" },
     { allow = ["bzip2-1.0.6"], crate = "libbz2-rs-sys" },
 ]
 
@@ -51,49 +48,20 @@ name = "ring"
 expression = "MIT AND ISC AND OpenSSL"
 license-files = [{ path = "LICENSE", hash = 0xbd0eed23 }]
 
-# ──────────────────────────────────────────────
-# Bans — prevent unwanted or duplicate crates
-# ──────────────────────────────────────────────
 [bans]
 multiple-versions = "deny"
 wildcards = "deny"
 highlight = "all"
 
-# Ignore duplicate versions for Windows targets (transitive deps)
-
-# Broad exceptions for common transitive duplicates
-
-[[bans.skip]]
-name = "bytes"
-[[bans.skip]]
-name = "foldhash"
-[[bans.skip]]
-name = "getrandom"
-[[bans.skip]]
-name = "hashbrown"
-[[bans.skip]]
-name = "indexmap"
-[[bans.skip]]
-name = "log"
-[[bans.skip]]
-name = "object"
-[[bans.skip]]
-name = "petgraph"
-[[bans.skip]]
-name = "prost"
-[[bans.skip]]
-name = "regex"
-[[bans.skip]]
-name = "regex-automata"
-[[bans.skip]]
-name = "regex-syntax"
-
-
-
-
-
-[[bans.skip]]
-name = "unicode-width"
+# On autorise les duplications pour les crates système ou transitives où c'est inévitable
+skip = [
+    { name = "windows-sys" },
+    { name = "r-efi" },
+    { name = "unicode-width" },
+    { name = "foldhash" },
+    { name = "getrandom" },
+    { name = "hashbrown" },
+]
 
 # ──────────────────────────────────────────────
 # Sources — only allow crates from crates.io

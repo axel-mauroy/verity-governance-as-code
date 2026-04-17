@@ -22,7 +22,9 @@ async fn main() -> anyhow::Result<()> {
 
         Commands::Clean { project_dir } => commands::clean::execute(project_dir),
 
-        Commands::Query { query } => commands::query::execute(query).await,
+        Commands::Query { query, project_dir } => {
+            commands::query::execute(query, project_dir).await
+        }
 
         Commands::Generate {
             project_dir,
