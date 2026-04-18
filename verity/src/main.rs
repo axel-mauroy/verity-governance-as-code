@@ -41,5 +41,7 @@ async fn main() -> anyhow::Result<()> {
             check,
             format,
         } => commands::lineage::execute(project_dir, check, format),
+
+        Commands::Init { project_name, path } => commands::init::execute(project_name, path),
     }
 }

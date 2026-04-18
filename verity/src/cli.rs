@@ -87,6 +87,16 @@ pub enum Commands {
         #[arg(long, default_value = "mermaid")]
         format: String,
     },
+
+    /// Bootstraps a new Verity project
+    Init {
+        /// The name of the project
+        project_name: String,
+
+        /// Where to create the project
+        #[arg(long, short, default_value = ".")]
+        path: PathBuf,
+    },
 }
 
 #[cfg(test)]
