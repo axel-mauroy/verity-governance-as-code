@@ -6,7 +6,7 @@ build-backend = "maturin"
 name = "verity-bigquery"
 version = "0.2.0"
 authors = [
-    { name = "Axel MAUROY", email = "axel@example.com" }
+    { name = "Axel MAUROY", email = "axel.mauroy@gmail.com" }
 ]
 description = "BigQuery Connector for Verity, the Governance-as-Code Data Pipeline Tool"
 readme = "../README.md"
