@@ -82,6 +82,9 @@ pub struct ProxyConnector {
     engine_name: String,
     stdin: Mutex<ChildStdin>,
     reader: Mutex<BufReader<ChildStdout>>,
+    // We KEEP the child handle so it lives as long as the ProxyConnector.
+    // If ProxyConnector drops, `_child` drops, triggering `kill_on_drop`.
+    _child: std::sync::Mutex<tokio::process::Child>,
 }
 
 impl ProxyConnector {
@@ -90,6 +93,7 @@ impl ProxyConnector {
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::inherit())
+            .kill_on_drop(true) // ENFORCE DISCIPLINE: No Zombies. Kill child if parent drops.
             .spawn()
             .map_err(|e| VerityError::InternalError(format!("Failed to start connector: {}", e)))?;
 
@@ -106,6 +110,7 @@ impl ProxyConnector {
             engine_name: engine_name.to_string(),
             stdin: Mutex::new(stdin),
             reader: Mutex::new(BufReader::new(stdout)),
+            _child: std::sync::Mutex::new(child),
         })
     }
 
