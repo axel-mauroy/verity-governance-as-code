@@ -21,13 +21,13 @@ To guarantee that the Core and Connectors versions remain strictly aligned (prev
 
 If you manage your environment with modern tools like **uv** (highly recommended) :
 ```bash
-uv add "verity-cli[bigquery]==0.2.0"
+uv add "verity[bigquery]==0.2.0"
 ```
 
 Or via the traditional approach using `requirements.txt`:
 ```text
 # requirements.txt
-verity-cli[bigquery]==0.2.0
+verity[bigquery]==0.2.0
 ```
 
 ⚠️ **Version Hell (The JSON-RPC Contract)**: If you choose not to use the Extras system and download the packages separately, **the Core and Connectors versions must be strictly identical**. An asymmetry between a Core v0.3.0 and a connector v0.2.0 will violently crash the pipeline due to JSON-RPC schema drift.

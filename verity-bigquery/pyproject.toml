@@ -1,0 +1,26 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "verity-bigquery"
+version = "0.2.0"
+authors = [
+    { name = "Axel MAUROY", email = "axel@example.com" }
+]
+description = "BigQuery Connector for Verity, the Governance-as-Code Data Pipeline Tool"
+readme = "../README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+dependencies = []
+
+[tool.maturin]
+# This tells Maturin that this project is a purely Rust binary, not a Python extension module.
+# It will package the compiled `verity-bigquery` binary into the wheel's `bin/` directory
+# so it becomes available in the PATH when users `pip install verity-bigquery`.
+binding = "bin"
+strip = true
