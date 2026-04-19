@@ -10,8 +10,12 @@ use cli::Commands;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    tracing_subscriber::fmt::init();
-
+    // 3. Observability: Structured JSON Logging
+    if std::env::var("VERITY_LOG_FORMAT").unwrap_or_default() == "json" {
+        tracing_subscriber::fmt().json().init();
+    } else {
+        tracing_subscriber::fmt::init();
+    }
     let cli = cli::Cli::parse();
 
     match cli.command {

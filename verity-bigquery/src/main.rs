@@ -149,9 +149,16 @@ impl Connector for BigQueryConnector {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // ENFORCE DISCIPLINE: All logs must go to stderr to protect the JSON-RPC stdout channel.
-    tracing_subscriber::fmt()
-        .with_writer(std::io::stderr)
-        .init();
+    if std::env::var("VERITY_LOG_FORMAT").unwrap_or_default() == "json" {
+        tracing_subscriber::fmt()
+            .json()
+            .with_writer(std::io::stderr)
+            .init();
+    } else {
+        tracing_subscriber::fmt()
+            .with_writer(std::io::stderr)
+            .init();
+    }
 
     let connector = BigQueryConnector::from_env().await?;
     ConnectorRunner::run(Arc::new(connector)).await?;
