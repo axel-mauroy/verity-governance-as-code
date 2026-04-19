@@ -26,6 +26,18 @@ pub struct ConnectorError {
     pub message: String,
 }
 
+/// Parameters for "handshake" method
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HandshakeParams {
+    pub core_version: String,
+}
+
+/// Result for "handshake" method
+#[derive(Debug, Serialize, Deserialize)]
+pub struct HandshakeResult {
+    pub connector_version: String,
+}
+
 /// Parameters for "fetch_sample" method
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FetchSampleParams {

@@ -88,14 +88,30 @@ pub struct ProxyConnector {
 }
 
 impl ProxyConnector {
-    pub async fn new(binary_path: &str, engine_name: &str) -> Result<Self, VerityError> {
-        let mut child = Command::new(binary_path)
+    pub async fn new(binary_name: &str, engine_name: &str) -> Result<Self, VerityError> {
+        // 1. Dynamic Path Resolution (The Airflow PATH Gotcha)
+        // If Verity was installed via PyPI in a virtualenv (e.g. `~/.local/bin/verity`),
+        // the sub-shell might not have the virtualenv in its PATH.
+        // We ensure that we look for connectors right next to the current executable.
+        let resolved_path = std::env::current_exe()
+            .ok()
+            .and_then(|current| current.parent().map(|p| p.join(binary_name)))
+            .filter(|path| path.exists())
+            .map(|path| path.to_string_lossy().to_string())
+            .unwrap_or_else(|| binary_name.to_string());
+
+        let mut child = Command::new(&resolved_path)
             .stdin(std::process::Stdio::piped())
             .stdout(std::process::Stdio::piped())
             .stderr(std::process::Stdio::inherit())
             .kill_on_drop(true) // ENFORCE DISCIPLINE: No Zombies. Kill child if parent drops.
             .spawn()
-            .map_err(|e| VerityError::InternalError(format!("Failed to start connector: {}", e)))?;
+            .map_err(|e| {
+                VerityError::InternalError(format!(
+                    "Failed to start connector '{}': {}",
+                    resolved_path, e
+                ))
+            })?;
 
         let stdin = child
             .stdin
@@ -106,12 +122,35 @@ impl ProxyConnector {
             .take()
             .ok_or(VerityError::InternalError("No stdout".into()))?;
 
-        Ok(Self {
+        let stdin_mutex = Mutex::new(stdin);
+        let reader_mutex = Mutex::new(BufReader::new(stdout));
+
+        let proxy = Self {
             engine_name: engine_name.to_string(),
-            stdin: Mutex::new(stdin),
-            reader: Mutex::new(BufReader::new(stdout)),
+            stdin: stdin_mutex,
+            reader: reader_mutex,
             _child: std::sync::Mutex::new(child),
+        };
+
+        // 2. The JSON-RPC Handshake (Version Mismatch Prevention)
+        let core_version = env!("CARGO_PKG_VERSION");
+        let params = serde_json::to_value(crate::ports::protocol::HandshakeParams {
+            core_version: core_version.to_string(),
         })
+        .map_err(|e| VerityError::InternalError(format!("Handshake param error: {}", e)))?;
+
+        let res = proxy.call("handshake", params).await?;
+        let handshake_res: crate::ports::protocol::HandshakeResult = serde_json::from_value(res)
+            .map_err(|e| VerityError::InternalError(format!("Handshake failed: {}", e)))?;
+
+        if handshake_res.connector_version != core_version {
+            return Err(VerityError::InternalError(format!(
+                "Version Mismatch: Core is v{} but Connector is v{}. Please align versions.",
+                core_version, handshake_res.connector_version
+            )));
+        }
+
+        Ok(proxy)
     }
 
     async fn call(
@@ -269,6 +308,24 @@ impl ConnectorRunner {
             };
 
             let res = match req.method.as_str() {
+                "handshake" => {
+                    let _params: crate::ports::protocol::HandshakeParams =
+                        match serde_json::from_value(req.params) {
+                            Ok(p) => p,
+                            Err(e) => return Err(anyhow::anyhow!("Handshake error: {}", e)),
+                        };
+                    ConnectorResponse {
+                        jsonrpc: "2.0".into(),
+                        result: Some(
+                            serde_json::to_value(crate::ports::protocol::HandshakeResult {
+                                connector_version: env!("CARGO_PKG_VERSION").into(),
+                            })
+                            .unwrap_or(serde_json::Value::Null),
+                        ),
+                        error: None,
+                        id: req.id,
+                    }
+                }
                 "execute" => {
                     let params: ExecuteParams = serde_json::from_value(req.params)?;
                     match connector.execute(&params.query).await {

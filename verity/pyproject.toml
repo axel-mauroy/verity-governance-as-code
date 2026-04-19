@@ -1,0 +1,34 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "verity"
+version = "0.2.0"
+authors = [
+    { name = "Axel MAUROY", email = "axel.mauroy@gmail.com" }
+]
+description = "Verity: The Governance-as-Code Data Pipeline Tool"
+readme = "../README.md"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+# Base executable requires no external Python packages to run.
+dependencies = []
+
+[project.optional-dependencies]
+# The Python Extras mapping!
+# When a user runs `uv add "verity[bigquery]"`, pip/uv will resolve this extra
+# and download the matching `verity-bigquery` wheel from PyPI, automatically
+# aligning the JSON-RPC versions.
+bigquery = ["verity-bigquery==0.2.0"]
+
+[tool.maturin]
+# This tells Maturin that this project is a purely Rust binary, not a Python extension module.
+# It will package the compiled `verity` engine binary into the wheel's `bin/` directory
+# so it becomes available in the PATH when users run `verity run`.
+binding = "bin"
+strip = true
