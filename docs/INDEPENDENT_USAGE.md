@@ -11,10 +11,15 @@ You can bootstrap a Verity project anywhere in your organization and integrate i
 Instead of compiling from source, we recommend installing pre-compiled binaries for your architecture.
 
 #### macOS (Homebrew)
-The easiest way for Data Engineers on Mac. Once you tap our repository, you can install simply as `verity`:
+Verity is modular. Install the core engine first, then any connectors you need:
 ```bash
 brew tap axel-mauroy/verity-governance-as-code
+
+# Install Core
 brew install verity
+
+# Install Connectors (optional)
+brew install verity-bigquery
 ```
 
 #### Linux & CI/CD

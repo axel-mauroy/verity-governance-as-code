@@ -1,0 +1,40 @@
+# verity_project_conf.yaml
+# Global Project Configuration
+# 
+# Verity enforces Governance-by-Design. This configuration file determines
+# how your data pipeline will behave regarding PII masking, schema drift, and data quality.
+# 
+# - strict_mode: When true, the pipeline will fail if an undocumented column is detected
+#   or if a governance violation occurs (like exposing a PII column in a public model).
+#   Use `strict: false` in dev, and `true` in CI/CD and Production.
+
+name: my_standalone_project
+version: "0.1.0"
+profile: dev
+target-path: target
+
+config-paths: ["config"]
+model-paths: ["models"]
+
+defaults:
+  staging:
+    materialized: view
+  intermediate:
+    materialized: view
+  marts:
+    materialized: table
+
+governance:
+  # Enable global PII detection. See config/policies.yml for regex patterns.
+  pii_detection:
+    enabled: true
+  
+  # Enable data quality checks (e.g., unique, not_null, anomaly detection).
+  data_quality:
+    enabled: true
+  
+  # Threshold for Row Count Anomaly detection. (0.10 means a 10% change is flagged).
+  default_anomaly_threshold: 0.10
+
+  # Fails the build on governance violations. Set to false for local dev.
+  strict: false

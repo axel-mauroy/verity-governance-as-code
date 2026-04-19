@@ -1,0 +1,33 @@
+# config/policies.yml
+# Governance Strategy: PII Detection & Auto-Masking
+#
+# Verity enforces Data Governance at compile time (Zero-Trust Schema).
+# This file defines two main concepts:
+#
+# 1. PII Patterns (Regex scanning)
+#    Verity can scan sample data against these regexes.
+#    If a pattern matches, Verity will enforce that the column has a policy defined in the model schema.
+#    If a PII column is undocumented, the pipeline build will fail (in strict mode).
+#
+# 2. Column Policies (Auto-Masking Rules)
+#    You can define default policies based on regex matches of column names.
+#    For instance, any column name matching `(?i)email` will automatically be assigned the `hash` policy
+#    if not overridden in the specific model's `.yml`.
+
+pii_detection:
+  enabled: true
+  patterns:
+    - name: "email"
+      regex: "^[A-Za-z0-9_.+-]+@[A-Za-z0-9-]+\\.[A-Za-z0-9-.]+$"
+      severity: high
+      action: warn
+    - name: "ssn"
+      regex: "^\\d{3}-\\d{2}-\\d{4}$"
+      severity: critical
+      action: block
+      masking_strategy: redact
+  column_policies:
+    - column_name_pattern: "(?i)email"
+      policy: hash
+    - column_name_pattern: "(?i)ssn"
+      policy: redact

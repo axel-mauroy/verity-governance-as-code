@@ -1,0 +1,5 @@
+# Verity build artifacts
+target/
+*.parquet
+*.db
+*.duckdb

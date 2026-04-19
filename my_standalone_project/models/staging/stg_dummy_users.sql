@@ -1,0 +1,1 @@
+SELECT user_id, email, age FROM dummy_source

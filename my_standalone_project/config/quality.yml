@@ -1,0 +1,16 @@
+# config/quality.yml
+# Governance Strategy: Data Quality
+#
+# Define your global data quality rules here. These checks are executed *after* materialization.
+# - unique: Ensures no duplicate values exist.
+# - not_null: Ensures no NULL values exist.
+
+data_quality:
+  enabled: true
+  rules:
+    - name: global_unique
+      description: "Default uniqueness check"
+      severity: error
+    - name: global_not_null
+      description: "Default nullability check"
+      severity: error
