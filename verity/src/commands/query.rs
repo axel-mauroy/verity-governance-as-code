@@ -34,6 +34,11 @@ pub async fn execute(query: String, project_dir: PathBuf) -> anyhow::Result<()> 
                 )
             })?)
         }
+        Engine::BigQuery => {
+            Box::new(verity_core::ports::connector::ProxyConnector::new("verity-bigquery", "BigQuery")
+                .await
+                .context("Failed to start external BigQuery connector. Is 'verity-bigquery' installed and in PATH?")?)
+        }
     };
 
     // C. Register sources so the query can reference them

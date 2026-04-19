@@ -10,6 +10,7 @@ use std::collections::HashMap;
 pub enum Engine {
     #[default]
     DataFusion,
+    BigQuery,
 }
 
 #[derive(Debug, Deserialize, Serialize, Clone)]

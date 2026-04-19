@@ -4,7 +4,7 @@
 members = [
     "verity-core",
     "verity",
-    "verity-connectors"
+    "verity-bigquery",
 ]
 resolver = "2"
 

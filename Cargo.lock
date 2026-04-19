@@ -4206,7 +4206,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "verity-connectors"
+name = "verity-bigquery"
 version = "0.1.0"
 dependencies = [
  "anyhow",
@@ -4218,6 +4218,7 @@ dependencies = [
  "thiserror",
  "tokio",
  "tracing",
+ "tracing-subscriber",
  "verity-core",
 ]
 

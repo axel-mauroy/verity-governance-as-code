@@ -41,6 +41,13 @@ pub async fn execute(project_dir: PathBuf, select: Option<String>) -> anyhow::Re
                 )
             })?)
         }
+        Engine::BigQuery => {
+            println!("   Engine: Google BigQuery (External) ☁️");
+            // Core assumes 'verity-bigquery' is in the PATH
+            Box::new(verity_core::ports::connector::ProxyConnector::new("verity-bigquery", "BigQuery")
+                .await
+                .context("Failed to start external BigQuery connector. Is 'verity-bigquery' installed and in PATH?")?)
+        }
     };
 
     // C. Run the Pipeline (Application Layer)
