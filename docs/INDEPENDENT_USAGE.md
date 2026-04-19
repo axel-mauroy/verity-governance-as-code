@@ -1,6 +1,6 @@
 # Using Verity in Independent Pipelines
 
-Verity is designed not just as a library, but as a standalone Data Contract & Transformation engine. Because Verity is written in Rust, it compiles into a single executable binary. You do not need Java, Python virtual environments, or Docker to run it.
+Verity is designed not just as a library, but as a standalone Data Contract & Transformation engine. Because Verity is written in Rust, it compiles into a high-performance, single executable binary. You do not need Java, Python virtual environments, or Docker to run it.
 
 You can bootstrap a Verity project anywhere in your organization and integrate it into any CI/CD pipeline efficiently and securely.
 
@@ -8,11 +8,28 @@ You can bootstrap a Verity project anywhere in your organization and integrate i
 
 ### 1. Installation
 
-Install the `verity` CLI tool directly via Cargo (a pre-compiled binary distribution mechanism is also possible for CI without Rust toolchains):
+Instead of compiling from source, we recommend installing pre-compiled binaries for your architecture.
 
+#### macOS (Homebrew)
+The easiest way for Data Engineers on Mac is using Homebrew:
+```bash
+brew install axel-mauroy/tap/verity
+```
+
+#### Linux & CI/CD
+For Linux users or automated CI/CD pipelines, use our installation script to fetch the latest pre-compiled release automatically:
+```bash
+curl -fsSL https://raw.githubusercontent.com/axel-mauroy/verity-governance-as-code/main/install.sh | bash
+```
+
+<details>
+<summary>Compile from source (Fallback)</summary>
+
+If you prefer building from source, ensure the Rust toolchain is installed and run:
 ```bash
 cargo install --git https://github.com/axel-mauroy/verity-governance-as-code
 ```
+</details>
 
 ### 2. Bootstrapping a Project
 
@@ -24,7 +41,7 @@ cd my_data_project
 ```
 
 This will generate the following structure:
-```
+```text
 my_data_project/
 ├── config/
 │   ├── policies.yml            # PII Regex definitions
@@ -57,7 +74,7 @@ Verity's core philosophy is **Zero-Trust Compilation**: your pipeline should fai
 
 Strict Mode forces Verity to block execution if Governance policies are violated. You should enable this mode in your CI/CD and Production pipelines.
 
-Do not rely on containerization to define "production". Instead, run Verity natively to easily pass cloud configurations and credentials, and use the `VERITY_STRICT` environment variable:
+Do not rely on containerization to define "production" execution. Instead, run Verity natively to easily pass cloud configurations and credentials, and use the `VERITY_STRICT` environment variable:
 
 ```bash
 VERITY_STRICT=true verity run
@@ -65,7 +82,7 @@ VERITY_STRICT=true verity run
 
 ### GitHub Actions Example
 
-Here is a simple way to run Verity natively in a GitHub Action using the Rust toolchain to compile or run the CLI:
+Here is a simple way to run Verity natively in a GitHub Action using the installation script:
 
 ```yaml
 name: Data Pipeline CI
@@ -82,16 +99,13 @@ jobs:
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
-        
-      - name: Install Rust
-        uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Install Verity
-        run: cargo install --git https://github.com/axel-mauroy/verity-governance-as-code
+      - name: Install Verity CLI
+        run: curl -fsSL https://raw.githubusercontent.com/axel-mauroy/verity-governance-as-code/main/install.sh | bash
         
       - name: Define Credentials
         run: |
-          # Use native GitHub secrets rather than mounting volumes to a container!
+          # Use native GitHub secrets!
           # export AWS_ACCESS_KEY_ID=${{ secrets.AWS_ACCESS_KEY_ID }}
           # export AWS_SECRET_ACCESS_KEY=${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
