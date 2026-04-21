@@ -16,22 +16,44 @@ Verity addresses the structural flaws of modern data engineering in the age of R
 | **Zero-Trust Compilation** | Governance violations are hard compile errors — no data is written before policies pass |
 | **Auto PII Masking** | Columns tagged `policy: hash/redact/mask_email` are automatically wrapped at compile time |
 | **Parallel DAG Execution** | Kahn's topological sort groups independent models for concurrent `tokio` execution |
+| **Modular Architecture** | Decoupled Core engine and Cloud Connectors (BigQuery, etc.) for minimalist deployments |
 | **Auto-Schema Propagation** | Undocumented columns are detected and added to `schema.yml` automatically |
 | **Source Generation** | `verity generate` scans `data/` and creates `models/sources.yaml` with smart merge |
 | **Data Quality Tests** | `unique`, `not_null`, `row_count_anomaly`, `z_score_anomaly` run post-materialization |
 | **Strict vs. Dev Modes** | `strict: true` blocks in CI/Prod; `strict: false` warns but doesn't block in Dev |
 | **Data Catalog** | `verity docs` generates a JSON-LD (DCAT + PROV-O) catalog from the manifest |
-| **Single Binary** | Pure Rust — `cargo install`, no Python venv, no cold start |
+| **Enterprise Distribution** | Native Rust binaries distributed via **PyPI**, **Homebrew**, and **Docker** |
 
 ---
 
 ## 🛠 Quick Start
 
-**Prerequisites:** Rust stable (2024 edition)
+### 1. Enterprise Installation (Recommended)
+Verity is distributed as a high-performance Rust binary, but can be seamlessly installed via Python package managers (like `uv` or `pip`) to simplify orchestration in Airflow, dbt Cloud, or GitHub Actions.
 
 ```bash
-# Install
-cargo install --path verity
+# Install the core engine and the BigQuery connector in one command
+uv add "verity-core[bigquery]"
+
+# Or via standard pip
+pip install "verity-core[bigquery]"
+```
+*Note: Using the `[bigquery]` extra ensures the Core and Connector versions are perfectly aligned via JSON-RPC.*
+
+### 2. Native Installation (Mac/Linux)
+```bash
+curl -sSL https://raw.githubusercontent.com/axel-mauroy/verity-governance-as-code/main/install.sh | bash
+```
+
+---
+
+## 🚀 Usage
+
+Once installed, use the `verity` CLI to manage your data lifecycle:
+
+```bash
+# Initialize a new project
+verity init my_governed_project
 
 # Run the full pipeline
 verity run
@@ -53,9 +75,6 @@ verity docs
 
 # Ad-hoc SQL query
 verity query "SELECT * FROM stg_users LIMIT 5"
-
-# Clean build artifacts
-verity clean
 ```
 
 ---
@@ -64,8 +83,8 @@ verity clean
 
 | Example | What it demonstrates |
 |---|---|
-| [`basic_rag_pipeline`](examples/basic_rag_pipeline/) | Multi-domain pipeline (HR, Supply Chain, Compliance) — PII masking into staging/intermediate/marts |
-| [`ml_pipeline`](examples/ml_pipeline/) | Churn prediction — versioned feature store, prediction drift monitoring, security level downgrade |
+| [`basic_rag_pipeline`](examples/basic_rag_pipeline/) | Multi-domain pipeline (HR, Supply Chain, Compliance) — PII masking |
+| [`ml_pipeline`](examples/ml_pipeline/) | Churn prediction — versioned feature store, prediction drift monitoring |
 
 ---
 
@@ -73,17 +92,11 @@ verity clean
 
 | Document | Description |
 |---|---|
+| [**Deployment Patterns**](docs/DEPLOYMENT_PATTERNS.md) | **Cloud, Airflow, and K8s orchestration guide** |
 | [PRD](docs/PRD.md) | Product Requirements — goals, features, success metrics |
-| [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md) | Pipeline lifecycle, module map, config reference, extension how-tos |
+| [Implementation Guide](docs/IMPLEMENTATION_GUIDE.md) | Pipeline lifecycle, module map, config reference |
 | [ADRs](docs/adr/) | Architecture Decision Records — why key design choices were made |
-| [Sources Generation](docs/sources_generation.md) | `verity generate` smart-merge strategy |
 | [Contributing](CONTRIBUTING.md) | Setup, quality gates, architecture rules, PR process |
-
----
-
-## 📝 Contributing
-
-See [CONTRIBUTING.md](CONTRIBUTING.md) for local setup, git workflow, quality gates (format → security → zero-panic → tests), and the PR process.
 
 ---
 
