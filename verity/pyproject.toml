@@ -3,7 +3,7 @@ requires = ["maturin>=1.0,<2.0"]
 build-backend = "maturin"
 
 [project]
-name = "verity"
+name = "verity-core"
 version = "0.2.0"
 authors = [
     { name = "Axel MAUROY", email = "axel.mauroy@gmail.com" }
@@ -21,7 +21,7 @@ dependencies = []
 
 [project.optional-dependencies]
 # The Python Extras mapping!
-# When a user runs `uv add "verity[bigquery]"`, pip/uv will resolve this extra
+# When a user runs `uv add "verity-core[bigquery]"`, pip/uv will resolve this extra
 # and download the matching `verity-bigquery` wheel from PyPI, automatically
 # aligning the JSON-RPC versions.
 bigquery = ["verity-bigquery==0.2.0"]
