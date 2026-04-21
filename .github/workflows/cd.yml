@@ -67,10 +67,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # -------------------------------------------------------------
-  # 2. PyPI Publish via Maturin
+  # 2. Build Python Wheels via Maturin (Matrix)
   # -------------------------------------------------------------
-  pypi-publish:
-    name: 🐍 Publish Wheels to PyPI (${{ matrix.os }})
+  build-wheels:
+    name: 🐍 Build Wheels (${{ matrix.os }})
     needs: github-release
     runs-on: ${{ matrix.os }}
     strategy:
@@ -86,18 +86,43 @@ jobs:
         with:
           python-version: '3.11'
           
-      - name: 📦 Build & Publish verity-bigquery
+      - name: 📦 Build verity-bigquery
         uses: PyO3/maturin-action@v1
         with:
-          command: publish
-          args: --release -m verity-bigquery/Cargo.toml
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+          command: build
+          args: --release --out dist -m verity-bigquery/Cargo.toml
 
-      - name: 📦 Build & Publish verity core
+      - name: 📦 Build verity-core
         uses: PyO3/maturin-action@v1
         with:
-          command: publish
-          args: --release -m verity/Cargo.toml
+          command: build
+          args: --release --out dist -m verity/Cargo.toml
+
+      - name: 📤 Upload Wheels Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: wheels-${{ matrix.os }}
+          path: dist/*
+
+  # -------------------------------------------------------------
+  # 3. Publish to PyPI (Single Threaded to avoid Race Conditions)
+  # -------------------------------------------------------------
+  pypi-publish:
+    name: 🐍 Publish to PyPI
+    needs: build-wheels
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Download Wheels Artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          pattern: wheels-*
+          merge-multiple: true
+          
+      - name: 🚀 Upload to PyPI
+        uses: PyO3/maturin-action@v1
+        with:
+          command: upload
+          args: --skip-existing dist/*
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
