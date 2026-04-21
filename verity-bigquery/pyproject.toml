@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "verity-bigquery"
-version = "0.2.1"
+version = "0.2.2"
 authors = [
     { name = "Axel MAUROY", email = "axel.mauroy@gmail.com" }
 ]

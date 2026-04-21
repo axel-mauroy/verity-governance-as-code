@@ -33,7 +33,7 @@ Verity is distributed as a high-performance Rust binary, but can be seamlessly i
 
 ```bash
 # Install the core engine and the BigQuery connector in one command
-uv add "verity-core[bigquery]==0.2.1"
+uv add "verity-core[bigquery]"
 
 # Or via standard pip
 pip install "verity-core[bigquery]"
