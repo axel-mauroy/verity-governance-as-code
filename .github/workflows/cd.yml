@@ -1,4 +1,4 @@
-name: Verity CD (Releases & PyPI)
+name: Verity CD (Production Optimized)
 
 on:
   push:
@@ -7,122 +7,131 @@ on:
 
 permissions:
   contents: write
+  id-token: write # Required for PyPI OIDC Trusted Publishing
+
+# Cancel currently running workflow if a new tag is pushed rapidly
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 env:
   FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   # -------------------------------------------------------------
-  # 1. Native GitHub Releases (Homebrew & script install.sh)
+  # 1. Build & Isolate Artifacts (Matrix)
   # -------------------------------------------------------------
-  github-release:
-    name: 🚀 GitHub Release (${{ matrix.os }})
+  build-artifacts:
+    name: 🏗️ Build (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         include:
           - os: ubuntu-latest
-            suffix: linux-amd64
+            target: x86_64-unknown-linux-gnu
+            ext: ""
           - os: macos-latest
-            suffix: macos-universal
+            target: aarch64-apple-darwin
+            ext: ""
           - os: windows-latest
-            suffix: windows-amd64
-
-    steps:
-      - name: 📥 Checkout Code
-        uses: actions/checkout@v4
-
-      - name: 🦀 Setup Rust Toolchain
-        uses: dtolnay/rust-toolchain@stable
-
-      - name: 📦 Cache Dependencies
-        uses: swatinem/rust-cache@v2
-
-      - name: 🏗️ Build All Binaries (Release)
-        run: cargo build --release
-
-      - name: 🏷️ Rename Binaries for Upload
-        shell: bash
-        run: |
-          mkdir -p assets
-          # Extension exe pour Windows
-          EXT=""
-          if [ "${{ matrix.os }}" == "windows-latest" ]; then EXT=".exe"; fi
-          
-          # Copie Verity Core
-          cp target/release/verity$EXT assets/verity-${{ matrix.suffix }}$EXT
-          
-          # Copie Verity BigQuery
-          cp target/release/verity-bigquery$EXT assets/verity-bigquery-${{ matrix.suffix }}$EXT
-
-      - name: 🚀 Create / Update GitHub Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: assets/*
-          generate_release_notes: true
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  # -------------------------------------------------------------
-  # 2. Build Python Wheels via Maturin (Matrix)
-  # -------------------------------------------------------------
-  build-wheels:
-    name: 🐍 Build Wheels (${{ matrix.os }})
-    needs: github-release
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+            target: x86_64-pc-windows-msvc
+            ext: ".exe"
     
     steps:
       - name: 📥 Checkout Code
         uses: actions/checkout@v4
-        
+
+      - name: 🦀 Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: 💾 Rust Cache
+        uses: swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      # 🐍 Python nu, parfait pour Maturin. Aucun gestionnaire de paquets superflu.
       - name: 🐍 Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          
-      - name: 📦 Build verity-bigquery
+
+      # 📦 BUILD Maturin (Gère les Wheels ET génère les binaires dans target/)
+      - name: 🎡 Build Verity Core
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --out dist -m verity-bigquery/Cargo.toml
+          args: --release --out wheel_out --target ${{ matrix.target }} -m verity/Cargo.toml
 
-      - name: 📦 Build verity-core
+      - name: 🎡 Build Verity BigQuery
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --out dist -m verity/Cargo.toml
+          args: --release --out wheel_out --target ${{ matrix.target }} -m verity-bigquery/Cargo.toml
 
-      - name: 📤 Upload Wheels Artifacts
+      # 🏷️ EXTRACTION des binaires
+      - name: 🏷️ Extract Binaries
+        shell: bash
+        run: |
+          mkdir -p bin_out
+          cp target/${{ matrix.target }}/release/verity${{ matrix.ext }} bin_out/verity-${{ matrix.os }}${{ matrix.ext }}
+          cp target/${{ matrix.target }}/release/verity-bigquery${{ matrix.ext }} bin_out/verity-bigquery-${{ matrix.os }}${{ matrix.ext }}
+
+      - name: 📤 Upload Binaries
+        uses: actions/upload-artifact@v4
+        with:
+          name: binaries-${{ matrix.os }}
+          path: bin_out/*
+          retention-days: 1
+
+      - name: 📤 Upload Wheels
         uses: actions/upload-artifact@v4
         with:
           name: wheels-${{ matrix.os }}
-          path: dist/*
+          path: wheel_out/*
+          retention-days: 1
 
   # -------------------------------------------------------------
-  # 3. Publish to PyPI (Single Threaded to avoid Race Conditions)
+  # 2. Publish Binaries to GitHub (Single Job - No Race Conditions)
   # -------------------------------------------------------------
-  pypi-publish:
-    name: 🐍 Publish to PyPI
-    needs: build-wheels
+  publish-github:
+    name: 🚀 Publish GitHub Release
+    needs: [build-artifacts]
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Download Wheels Artifacts
+      - name: 📥 Download Binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: release_assets
+          pattern: binaries-*
+          merge-multiple: true
+
+      - name: 🚀 Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: release_assets/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # -------------------------------------------------------------
+  # 3. Publish Wheels to PyPI (Secure OIDC - Trusted Publishing)
+  # -------------------------------------------------------------
+  publish-pypi:
+    name: 🐍 Publish to PyPI
+    needs: [build-artifacts]
+    runs-on: ubuntu-latest
+    environment: release
+    steps:
+      - name: 📥 Download Wheels
         uses: actions/download-artifact@v4
         with:
           path: dist
           pattern: wheels-*
           merge-multiple: true
-          
+
       - name: 🚀 Upload to PyPI
-        uses: PyO3/maturin-action@v1
-        with:
-          command: upload
-          args: --skip-existing dist/*
-        env:
-          MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        uses: pypa/gh-action-pypi-publish@release
