@@ -77,12 +77,16 @@ impl Connector for BigQueryConnector {
 
     async fn register_source(
         &self,
-        _name: &str,
+        name: &str,
         _path: &std::path::Path,
     ) -> Result<(), VerityError> {
-        Err(VerityError::InternalError(
-            "register_source not supported on BigQuery connector binary.".into(),
-        ))
+        // En mode BigQuery, on assume que la source (le CSV) a déjà été ingestée
+        // dans une table portant le nom 'name' via le script de bootstrap_gcp.py.
+        tracing::info!(
+            "🔗 Source '{}': Assuming table already exists in BigQuery dataset.",
+            name
+        );
+        Ok(())
     }
 
     async fn materialize(
