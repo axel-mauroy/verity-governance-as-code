@@ -124,8 +124,15 @@ impl Connector for BigQueryConnector {
 
         let full_name = format!("`{}.{}.{}`", self.project_id, self.dataset_id, table_name);
         let ddl = match materialization_type {
-            "view" => format!("CREATE OR REPLACE VIEW {full_name} AS {bq_sql}"),
-            "table" => format!("CREATE OR REPLACE TABLE {full_name} AS {bq_sql}"),
+            // 🛠️ HACK BIGQUERY : On force 'view' et 'table' à se matérialiser en TABLE.
+            // Cela évite le bug de BigQuery sur la résolution des tables non qualifiées dans les vues.
+            "view" | "table" => {
+                tracing::info!(
+                    "💡 BigQuery adapter: Forcing materialization to TABLE for {}",
+                    full_name
+                );
+                format!("CREATE OR REPLACE TABLE {full_name} AS {bq_sql}")
+            }
             _ => {
                 tracing::error!("💥 Invalid materialization type: {}", materialization_type);
                 return Err(VerityError::InternalError(
