@@ -31,6 +31,14 @@ impl Connector for BigQueryConnector {
     }
 
     async fn execute(&self, query: &str) -> Result<(), VerityError> {
+        // 🛠️ HACK BIGQUERY : Ignorer la commande de flush local
+        if query.trim().eq_ignore_ascii_case("CHECKPOINT") {
+            tracing::info!(
+                "💡 BigQuery adapter: Ignoring CHECKPOINT command (not applicable to serverless BQ)."
+            );
+            return Ok(());
+        }
+
         // 🛠️ TRADUCTION DE DIALECTE : ANSI/Postgres -> BigQuery
         let mut bq_query = query.replace('"', "`");
         bq_query = bq_query.replace("VARCHAR", "STRING");
