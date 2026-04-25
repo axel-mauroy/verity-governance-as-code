@@ -32,12 +32,15 @@ jobs:
           - os: ubuntu-latest
             target: x86_64-unknown-linux-gnu
             ext: ""
+            suffix: "linux-x86_64"
           - os: macos-latest
             target: aarch64-apple-darwin
             ext: ""
+            suffix: "macos-universal"
           - os: windows-latest
             target: x86_64-pc-windows-msvc
             ext: ".exe"
+            suffix: "windows-x86_64"
     
     steps:
       - name: 📥 Checkout Code
@@ -72,13 +75,20 @@ jobs:
           command: build
           args: --release --out wheel_out --target ${{ matrix.target }} -m verity-bigquery/Cargo.toml
 
-      # 🏷️ EXTRACTION des binaires
-      - name: 🏷️ Extract Binaries
+      # 🏷️ EXTRACTION des binaires et calcul du SHA256
+      - name: 🏷️ Extract Binaries & Calculate SHA
         shell: bash
         run: |
           mkdir -p bin_out
-          cp target/${{ matrix.target }}/release/verity${{ matrix.ext }} bin_out/verity-${{ matrix.os }}${{ matrix.ext }}
-          cp target/${{ matrix.target }}/release/verity-bigquery${{ matrix.ext }} bin_out/verity-bigquery-${{ matrix.os }}${{ matrix.ext }}
+          cp target/${{ matrix.target }}/release/verity${{ matrix.ext }} bin_out/verity-${{ matrix.suffix }}${{ matrix.ext }}
+          cp target/${{ matrix.target }}/release/verity-bigquery${{ matrix.ext }} bin_out/verity-bigquery-${{ matrix.suffix }}${{ matrix.ext }}
+          
+          cd bin_out
+          if command -v shasum > /dev/null; then
+            shasum -a 256 verity* > checksums-${{ matrix.os }}.txt
+          else
+            sha256sum verity* > checksums-${{ matrix.os }}.txt
+          fi
 
       - name: 📤 Upload Binaries
         uses: actions/upload-artifact@v4
@@ -95,19 +105,29 @@ jobs:
           retention-days: 1
 
   # -------------------------------------------------------------
-  # 2. Publish Binaries to GitHub (Single Job - No Race Conditions)
+  # 2. Publish Binaries to GitHub & Update Homebrew
   # -------------------------------------------------------------
   publish-github:
-    name: 🚀 Publish GitHub Release
+    name: 🚀 Publish GitHub Release & Update Brew
     needs: [build-artifacts]
     runs-on: ubuntu-latest
     steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          ref: main # Ensure we commit formula updates to main
+
       - name: 📥 Download Binaries
         uses: actions/download-artifact@v4
         with:
           path: release_assets
           pattern: binaries-*
           merge-multiple: true
+
+      - name: 📝 Combine Checksums
+        run: |
+          cd release_assets
+          cat checksums-*.txt > checksums.txt
 
       - name: 🚀 Create Release
         uses: softprops/action-gh-release@v2
@@ -116,6 +136,30 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: 🍺 Update Homebrew Formulas
+        run: |
+          VERSION=${GITHUB_REF#refs/tags/v}
+          VERITY_MAC_SHA=$(grep 'verity-macos-universal' release_assets/checksums.txt | awk '{print $1}')
+          VERITY_BQ_MAC_SHA=$(grep 'verity-bigquery-macos-universal' release_assets/checksums.txt | awk '{print $1}')
+          
+          # Update verity.rb
+          sed -i "s|url \".*\"|url \"https://github.com/axel-mauroy/verity-governance-as-code/releases/download/v${VERSION}/verity-macos-universal\"|" Formula/verity.rb
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/verity.rb
+          sed -i "s/sha256 \".*\"/sha256 \"${VERITY_MAC_SHA}\"/" Formula/verity.rb
+
+          # Update verity-bigquery.rb
+          sed -i "s|url \".*\"|url \"https://github.com/axel-mauroy/verity-governance-as-code/releases/download/v${VERSION}/verity-bigquery-macos-universal\"|" Formula/verity-bigquery.rb
+          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/verity-bigquery.rb
+          sed -i "s/sha256 \".*\"/sha256 \"${VERITY_BQ_MAC_SHA}\"/" Formula/verity-bigquery.rb
+
+      - name: 🚀 Commit & Push Formula Updates
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Formula/
+          git commit -m "chore(brew): update formulas for v${VERSION} [skip ci]" || echo "No changes to commit"
+          git push origin main
 
   # -------------------------------------------------------------
   # 3. Publish Wheels to PyPI (Secure OIDC - Trusted Publishing)
