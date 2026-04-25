@@ -109,19 +109,10 @@ impl Connector for BigQueryConnector {
         };
 
         tracing::info!("Executing DDL: {}", ddl);
-        match self.execute(&ddl).await {
-            Ok(_) => {
-                tracing::info!("✅ Successfully materialized {}", full_name);
-                Ok(full_name)
-            }
-            Err(e) => {
-                tracing::error!(
-                    "💥 BIGQUERY CONNECTOR CRASHED during materialize of {}",
-                    table_name
-                );
-                Err(e)
-            }
-        }
+        self.execute(&ddl).await?;
+
+        tracing::info!("✅ Successfully materialized {}", full_name);
+        Ok(full_name)
     }
 
     async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {

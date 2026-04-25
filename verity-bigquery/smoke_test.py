@@ -54,7 +54,6 @@ def main():
         )
         
         time.sleep(2)
-        process.stdin.close()
         
         out, err = process.communicate(timeout=3)
         

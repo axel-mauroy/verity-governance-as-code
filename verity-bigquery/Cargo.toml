@@ -2,6 +2,7 @@
 name = "verity-bigquery"
 version.workspace = true
 authors.workspace = true
+description = "BigQuery Connector for Verity, the Governance-as-Code Data Pipeline Tool"
 edition.workspace = true
 license.workspace = true
 publish = false
