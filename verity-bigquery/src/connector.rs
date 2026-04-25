@@ -31,8 +31,12 @@ impl Connector for BigQueryConnector {
     }
 
     async fn execute(&self, query: &str) -> Result<(), VerityError> {
-        // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
-        let bq_query = query.replace('"', "`");
+        // 🛠️ TRADUCTION DE DIALECTE : ANSI/Postgres -> BigQuery
+        let mut bq_query = query.replace('"', "`");
+        bq_query = bq_query.replace("VARCHAR", "STRING");
+        bq_query = bq_query.replace("encode(sha256(", "TO_HEX(SHA256(");
+        bq_query = bq_query.replace("), 'hex')", "))");
+
         self.engine
             .run_query(&bq_query, Some(&self.dataset_id))
             .await?;
@@ -108,8 +112,15 @@ impl Connector for BigQueryConnector {
             materialization_type
         );
 
-        // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
-        let bq_sql = sql.replace('"', "`");
+        // 🛠️ TRADUCTION DE DIALECTE : ANSI/Postgres -> BigQuery
+        let mut bq_sql = sql.replace('"', "`");
+
+        // Traduction des types
+        bq_sql = bq_sql.replace("VARCHAR", "STRING");
+
+        // Traduction du masquage PII (encode(sha256(x), 'hex') -> TO_HEX(SHA256(x)))
+        bq_sql = bq_sql.replace("encode(sha256(", "TO_HEX(SHA256(");
+        bq_sql = bq_sql.replace("), 'hex')", "))");
 
         let full_name = format!("`{}.{}.{}`", self.project_id, self.dataset_id, table_name);
         let ddl = match materialization_type {
@@ -131,8 +142,12 @@ impl Connector for BigQueryConnector {
     }
 
     async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
-        // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
-        let bq_query = query.replace('"', "`");
+        // 🛠️ TRADUCTION DE DIALECTE : ANSI/Postgres -> BigQuery
+        let mut bq_query = query.replace('"', "`");
+        bq_query = bq_query.replace("VARCHAR", "STRING");
+        bq_query = bq_query.replace("encode(sha256(", "TO_HEX(SHA256(");
+        bq_query = bq_query.replace("), 'hex')", "))");
+
         let rows_opt = self
             .engine
             .run_query(&bq_query, Some(&self.dataset_id))
