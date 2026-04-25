@@ -31,7 +31,9 @@ impl Connector for BigQueryConnector {
     }
 
     async fn execute(&self, query: &str) -> Result<(), VerityError> {
-        self.engine.run_query(query).await?;
+        // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
+        let bq_query = query.replace('"', "`");
+        self.engine.run_query(&bq_query).await?;
         Ok(())
     }
 
@@ -100,10 +102,14 @@ impl Connector for BigQueryConnector {
             table_name,
             materialization_type
         );
+
+        // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
+        let bq_sql = sql.replace('"', "`");
+
         let full_name = format!("`{}.{}.{}`", self.project_id, self.dataset_id, table_name);
         let ddl = match materialization_type {
-            "view" => format!("CREATE OR REPLACE VIEW {full_name} AS {sql}"),
-            "table" => format!("CREATE OR REPLACE TABLE {full_name} AS {sql}"),
+            "view" => format!("CREATE OR REPLACE VIEW {full_name} AS {bq_sql}"),
+            "table" => format!("CREATE OR REPLACE TABLE {full_name} AS {bq_sql}"),
             _ => {
                 tracing::error!("💥 Invalid materialization type: {}", materialization_type);
                 return Err(VerityError::InternalError(
@@ -120,7 +126,9 @@ impl Connector for BigQueryConnector {
     }
 
     async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
-        let rows_opt = self.engine.run_query(query).await?;
+        // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
+        let bq_query = query.replace('"', "`");
+        let rows_opt = self.engine.run_query(&bq_query).await?;
         let rows = rows_opt.ok_or_else(|| VerityError::InternalError("No rows returned".into()))?;
 
         let first_row = rows
