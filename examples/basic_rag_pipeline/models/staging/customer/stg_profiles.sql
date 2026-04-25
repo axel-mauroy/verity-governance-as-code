@@ -5,7 +5,7 @@ SELECT
     first_name,
     last_name,
     segment,
-    last_login::TIMESTAMP as last_login,
-    signup_date::DATE as signup_date,
+    CAST(last_login AS TIMESTAMP) as last_login,
+    CAST(signup_date AS DATE) as signup_date,
     account_status
 FROM {{ source('customer', 'profiles') }}

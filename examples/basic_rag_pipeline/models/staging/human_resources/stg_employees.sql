@@ -4,6 +4,6 @@ SELECT
     employee_name,
     department,
     role,
-    hire_date::DATE as hire_date,
+    CAST(hire_date AS DATE) as hire_date,
     salary_band
 FROM {{ source('human_resources', 'employees') }}

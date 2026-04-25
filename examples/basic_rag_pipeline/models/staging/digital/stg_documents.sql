@@ -4,8 +4,8 @@ SELECT
     content,
     source_url,
     author_email,
-    created_at::TIMESTAMP as created_at,
-    updated_at::TIMESTAMP as updated_at,
+    CAST(created_at AS TIMESTAMP) as created_at,
+    CAST(updated_at AS TIMESTAMP) as updated_at,
     length(content) as content_length,
-    now() as processed_at
+    CURRENT_TIMESTAMP() as processed_at
 FROM {{ source('digital', 'documents') }}

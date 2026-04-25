@@ -4,5 +4,5 @@ SELECT
     document_id,
     embedding_vector,
     model_name,
-    created_at::TIMESTAMP as created_at
+    CAST(created_at AS TIMESTAMP) as created_at
 FROM {{ source('digital', 'embeddings') }}
