@@ -7,6 +7,14 @@ edition.workspace = true
 license.workspace = true
 publish = false
 
+[lib]
+name = "verity_bigquery"
+path = "src/lib.rs"
+
+[[bin]]
+name = "verity-bigquery"
+path = "src/main.rs"
+
 [dependencies]
 verity-core = { workspace = true }
 tokio = { workspace = true }
