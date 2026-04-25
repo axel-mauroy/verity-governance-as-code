@@ -29,6 +29,7 @@ check_output.txt
 .env
 .env.*
 !.env.example
+sa-key.json
 .agents/brain/
 .agents/logs/
 

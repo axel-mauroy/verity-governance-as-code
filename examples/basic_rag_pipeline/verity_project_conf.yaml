@@ -4,6 +4,7 @@
 name: basic_rag_pipeline
 version: "0.1.0"
 profile: default
+engine: datafusion
 target-path: target
 
 config-paths: ["config"]

@@ -1,0 +1,65 @@
+# verity-bigquery/justfile
+# Task runner for the Verity BigQuery Rust Connector
+
+set dotenv-load := true
+set shell := ["sh", "-cu"]
+
+# ─── Environment & Config ─────────────────────────────────────────────────────
+# Fallback sur les valeurs de dev par défaut si les variables ne sont pas définies
+PROJECT := env_var_or_default("GOOGLE_CLOUD_PROJECT", "dealk-data-dev")
+DATASET := env_var_or_default("VERITY_DATASET", "verity_dev")
+
+# ─── Default ──────────────────────────────────────────────────────────────────
+
+[doc('List all available recipes')]
+default:
+    @just --list
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Rust Development Lifecycle
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[doc('Build the debug binary')]
+build:
+    @echo "🔨 Building verity-bigquery (debug)..."
+    cargo build
+
+[doc('Check code formatting and run clippy linters (Fail on warnings)')]
+check:
+    @echo "🧹 Checking formatting..."
+    cargo fmt --all -- --check
+    @echo "🔬 Running Clippy..."
+    cargo clippy --all-targets --all-features -- -D warnings
+
+[doc('Auto-format all Rust code')]
+fmt:
+    @echo "✨ Formatting code..."
+    cargo fmt --all
+
+[doc('Build the optimized release binary')]
+release:
+    @echo "📦 Building verity-bigquery (release)..."
+    cargo build --release
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# Testing & Validation
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[doc('Run the e2e smoke test via JSON-RPC. Compiles the binary first.')]
+smoke project=PROJECT dataset=DATASET: build
+    @if [ -z "{{project}}" ] || [ -z "{{dataset}}" ]; then \
+        echo "❌ Error: Project or Dataset missing."; \
+        echo "Usage: just smoke <project_id> <dataset_id>"; \
+        exit 1; \
+    fi
+    @echo "🚀 Running smoke test for project '{{project}}' (dataset: '{{dataset}}')..."
+    env GOOGLE_CLOUD_PROJECT="{{project}}" VERITY_DATASET="{{dataset}}" uv run --no-project python3 smoke_test.py
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# GCP Auth Helpers
+# ═══════════════════════════════════════════════════════════════════════════════
+
+[doc('Refresh global Google Application Default Credentials (ADC) if smoke test fails with 403')]
+auth-login:
+    @echo "🔑 Requesting new ADC token..."
+    gcloud auth application-default login

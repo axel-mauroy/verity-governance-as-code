@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use tracing::{info, instrument, warn};
 
 use crate::domain::governance::{PiiConfig, QualityConfig, QualityRule};
-use crate::domain::project::configuration::ProjectConfig;
+use crate::domain::project::configuration::{Engine, ProjectConfig};
 use crate::infrastructure::error::InfrastructureError;
 
 // Removed struct definitions as they are now in domain/project/configuration.rs
@@ -119,5 +119,17 @@ fn apply_env_overrides(config: &mut ProjectConfig) {
     if let Ok(val) = std::env::var("VERITY_PROFILE") {
         info!(old = ?config.profile, new = ?val, "Overriding profile via ENV");
         config.profile = val;
+    }
+    if let Ok(val) = std::env::var("VERITY_ENGINE") {
+        let engine = match val.to_lowercase().as_str() {
+            "bigquery" => Engine::BigQuery,
+            "datafusion" => Engine::DataFusion,
+            _ => {
+                warn!(?val, "Unknown engine override via ENV, ignoring");
+                return;
+            }
+        };
+        info!(old = ?config.engine, new = ?engine, "Overriding engine via ENV");
+        config.engine = engine;
     }
 }
