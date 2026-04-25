@@ -1,6 +1,7 @@
 // verity-bigquery/src/client.rs
 
 use gcp_bigquery_client::Client;
+use gcp_bigquery_client::model::dataset_reference::DatasetReference;
 use gcp_bigquery_client::model::query_request::QueryRequest;
 use gcp_bigquery_client::model::table_row::TableRow;
 use verity_core::error::VerityError;
@@ -54,9 +55,23 @@ impl BqEngine {
         Ok(())
     }
 
-    pub async fn run_query(&self, query: &str) -> Result<Option<Vec<TableRow>>, VerityError> {
+    pub async fn run_query(
+        &self,
+        query: &str,
+        default_dataset: Option<&str>,
+    ) -> Result<Option<Vec<TableRow>>, VerityError> {
         tracing::info!("🚀 Executing BigQuery SQL:\n{}", query);
-        let request = QueryRequest::new(query);
+
+        let mut request = QueryRequest::new(query);
+
+        // 🛠️ INJECTION DU CONTEXTE : Définit le dataset par défaut
+        if let Some(ds) = default_dataset {
+            request.default_dataset = Some(DatasetReference {
+                dataset_id: ds.to_string(),
+                project_id: self.project_id.clone(),
+            });
+        }
+
         let res = self
             .client
             .job()

@@ -33,7 +33,9 @@ impl Connector for BigQueryConnector {
     async fn execute(&self, query: &str) -> Result<(), VerityError> {
         // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
         let bq_query = query.replace('"', "`");
-        self.engine.run_query(&bq_query).await?;
+        self.engine
+            .run_query(&bq_query, Some(&self.dataset_id))
+            .await?;
         Ok(())
     }
 
@@ -54,7 +56,10 @@ impl Connector for BigQueryConnector {
             self.project_id, self.dataset_id, table_name
         );
 
-        let rows_opt = self.engine.run_query(&query).await?;
+        let rows_opt = self
+            .engine
+            .run_query(&query, Some(&self.dataset_id))
+            .await?;
 
         let mut columns = Vec::new();
         if let Some(rows) = rows_opt {
@@ -128,7 +133,10 @@ impl Connector for BigQueryConnector {
     async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
         // 🛠️ TRADUCTION DE DIALECTE : ANSI (") -> BigQuery (`)
         let bq_query = query.replace('"', "`");
-        let rows_opt = self.engine.run_query(&bq_query).await?;
+        let rows_opt = self
+            .engine
+            .run_query(&bq_query, Some(&self.dataset_id))
+            .await?;
         let rows = rows_opt.ok_or_else(|| VerityError::InternalError("No rows returned".into()))?;
 
         let first_row = rows
