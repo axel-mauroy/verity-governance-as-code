@@ -386,6 +386,56 @@ impl ConnectorRunner {
                         },
                     }
                 }
+                "register_source" => {
+                    let params: crate::ports::protocol::RegisterSourceParams =
+                        serde_json::from_value(req.params)?;
+                    let path = std::path::PathBuf::from(params.path);
+                    match connector.register_source(&params.name, &path).await {
+                        Ok(_) => ConnectorResponse {
+                            jsonrpc: "2.0".into(),
+                            result: Some(serde_json::Value::Null),
+                            error: None,
+                            id: req.id,
+                        },
+                        Err(e) => ConnectorResponse {
+                            jsonrpc: "2.0".into(),
+                            result: None,
+                            error: Some(crate::ports::protocol::ConnectorError {
+                                code: -1,
+                                message: e.to_string(),
+                            }),
+                            id: req.id,
+                        },
+                    }
+                }
+                "materialize" => {
+                    let params: crate::ports::protocol::MaterializeParams =
+                        serde_json::from_value(req.params)?;
+                    match connector
+                        .materialize(
+                            &params.table_name,
+                            &params.sql,
+                            &params.materialization_type,
+                        )
+                        .await
+                    {
+                        Ok(res) => ConnectorResponse {
+                            jsonrpc: "2.0".into(),
+                            result: Some(res.into()),
+                            error: None,
+                            id: req.id,
+                        },
+                        Err(e) => ConnectorResponse {
+                            jsonrpc: "2.0".into(),
+                            result: None,
+                            error: Some(crate::ports::protocol::ConnectorError {
+                                code: -1,
+                                message: e.to_string(),
+                            }),
+                            id: req.id,
+                        },
+                    }
+                }
                 _ => ConnectorResponse {
                     jsonrpc: "2.0".into(),
                     result: None,
