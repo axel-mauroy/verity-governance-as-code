@@ -6,8 +6,9 @@ set shell := ["sh", "-cu"]
 
 # ─── Environment & Config ─────────────────────────────────────────────────────
 # Fallback sur les valeurs de dev par défaut si les variables ne sont pas définies
-PROJECT := env_var_or_default("GOOGLE_CLOUD_PROJECT", "dealk-data-dev")
-DATASET := env_var_or_default("VERITY_DATASET", "verity_dev")
+PROJECT := env_var_or_default("GOOGLE_CLOUD_PROJECT", "")
+DATASET := env_var_or_default("VERITY_DATASET", "")
+STAGING_BUCKET := env_var_or_default("VERITY_GCS_STAGING_BUCKET", "")
 
 # ─── Default ──────────────────────────────────────────────────────────────────
 
@@ -53,7 +54,7 @@ smoke project=PROJECT dataset=DATASET: build
         exit 1; \
     fi
     @echo "🚀 Running smoke test for project '{{project}}' (dataset: '{{dataset}}')..."
-    env GOOGLE_CLOUD_PROJECT="{{project}}" VERITY_DATASET="{{dataset}}" uv run --no-project python3 smoke_test.py
+    env GOOGLE_CLOUD_PROJECT="{{project}}" VERITY_DATASET="{{dataset}}" VERITY_GCS_STAGING_BUCKET="{{STAGING_BUCKET}}" uv run --no-project python3 smoke_test.py
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # GCP Auth Helpers
