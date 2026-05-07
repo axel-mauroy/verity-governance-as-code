@@ -1,0 +1,2 @@
+bc4391b903afc39184a6ac5f9f27a349bfb3abe5ceec4cc8d89e61da08f54bfa *verity-bigquery-windows-x86_64.exe
+f3f8dbefd5259010057791239ab67bbfd7ab6418801e6ba1e0483ecfc73e3030 *verity-windows-x86_64.exe

@@ -1,0 +1,2 @@
+e2fc8374a4d9aabf40deea5978fcbb3d4bb5d512b435ac7c616cfe8dd58001b2  verity-bigquery-linux-x86_64
+ebc65f45dea22997aebc3b6307901d7d35f5e432d9d01029f67993fa3d4c9e33  verity-linux-x86_64
