@@ -1,0 +1,2 @@
+93cb90fd3f67ee8cdbccb046f3b3decc077e8389cef326cb707d0fa5b50919e1  verity-bigquery-macos-universal
+203bab54c770224c3fefa0fcc3b16decf0d348c0839305cf08036778294b30c4  verity-macos-universal
