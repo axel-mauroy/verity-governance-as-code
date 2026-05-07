@@ -129,6 +129,10 @@ jobs:
         run: |
           cd release_assets
           cat checksums-*.txt > checksums.txt
+      - name: 🧹 Cleanup release assets
+        run: |
+          find release_assets/ -name "checksums-*.txt" -delete
+          ls -R release_assets/ # Debug to verify final asset list
 
       - name: 🚀 Create Release
         uses: softprops/action-gh-release@v2
@@ -138,22 +142,13 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: 🍺 Update Homebrew Formulas
-        run: |
-          VERSION=${GITHUB_REF#refs/tags/v}
-          echo "VERSION=$VERSION" >> $GITHUB_ENV
-          VERITY_MAC_SHA=$(grep 'verity-macos-universal' release_assets/checksums.txt | awk '{print $1}')
-          VERITY_BQ_MAC_SHA=$(grep 'verity-bigquery-macos-universal' release_assets/checksums.txt | awk '{print $1}')
-          
-          # Update verity.rb
-          sed -i "s|url \".*\"|url \"https://github.com/axel-mauroy/verity-governance-as-code/releases/download/v${VERSION}/verity-macos-universal\"|" Formula/verity.rb
-          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/verity.rb
-          sed -i "s/sha256 \".*\"/sha256 \"${VERITY_MAC_SHA}\"/" Formula/verity.rb
+      - name: 🛠️ Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
 
-          # Update verity-bigquery.rb
-          sed -i "s|url \".*\"|url \"https://github.com/axel-mauroy/verity-governance-as-code/releases/download/v${VERSION}/verity-bigquery-macos-universal\"|" Formula/verity-bigquery.rb
-          sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/verity-bigquery.rb
-          sed -i "s/sha256 \".*\"/sha256 \"${VERITY_BQ_MAC_SHA}\"/" Formula/verity-bigquery.rb
+      - name: 🍺 Update Homebrew Formulas
+        run: uv run .github/scripts/update_brew.py
 
       - name: 🔑 Generate ephemeral token
         id: app-token
@@ -162,16 +157,20 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      - name: 🧪 Test Homebrew Formulas
+        run: |
+          brew audit --strict --new-formula Formula/verity.rb
+          brew audit --strict --new-formula Formula/verity-bigquery.rb
+
       - name: 🚀 Create Pull Request for Formula Updates
         uses: peter-evans/create-pull-request@v6
         with:
           token: ${{ steps.app-token.outputs.token }}
-          commit-message: "chore(brew): update formulas for v${{ env.VERSION }} [skip ci]"
+          commit-message: "chore(brew): update formulas for v${{ env.VERSION }}"
           title: "chore(brew): update formulas for v${{ env.VERSION }}"
           body: "Automated PR to update Homebrew formulas for the latest release."
           branch: "chore/brew-v${{ env.VERSION }}"
           base: "main"
-
   # -------------------------------------------------------------
   # 3. Publish Wheels to PyPI (Secure OIDC - Trusted Publishing)
   # -------------------------------------------------------------
