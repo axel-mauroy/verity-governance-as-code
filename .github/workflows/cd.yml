@@ -155,10 +155,17 @@ jobs:
           sed -i "s/version \".*\"/version \"${VERSION}\"/" Formula/verity-bigquery.rb
           sed -i "s/sha256 \".*\"/sha256 \"${VERITY_BQ_MAC_SHA}\"/" Formula/verity-bigquery.rb
 
+      - name: 🔑 Generate ephemeral token
+        id: app-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
       - name: 🚀 Create Pull Request for Formula Updates
         uses: peter-evans/create-pull-request@v6
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ steps.app-token.outputs.token }}
           commit-message: "chore(brew): update formulas for v${{ env.VERSION }} [skip ci]"
           title: "chore(brew): update formulas for v${{ env.VERSION }}"
           body: "Automated PR to update Homebrew formulas for the latest release."
