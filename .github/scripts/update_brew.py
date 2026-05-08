@@ -66,8 +66,8 @@ def update_homebrew_formula(formula_path: Path, binary_name: str, version_str: s
     ]
 
     for pattern, replacement in substitutions:
-        # The lambda ensures we keep the surrounding quotes (groups 1 and 2)
-        content = re.sub(pattern, rf'\1{replacement.split(" ", 1)[1].strip(""" " """)}\2', content)
+        # Using \g<1> and \g<2> prevents the issue where the replacement starts with a digit (e.g., '0.2.8' causing \10)
+        content = re.sub(pattern, rf'\g<1>{replacement.split(" ", 1)[1].strip(""" " """)}\g<2>', content)
 
     formula_path.write_text(content, encoding=TEXT_ENCODING)
     print(f"✅ Updated {formula_path.name} for {binary_name}")
