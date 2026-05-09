@@ -162,8 +162,8 @@ jobs:
 
       - name: 🧪 Test Homebrew Formulas
         run: |
-          brew audit --strict --new-formula Formula/verity.rb
-          brew audit --strict --new-formula Formula/verity-bigquery.rb
+          brew audit --strict --new Formula/verity.rb
+          brew audit --strict --new Formula/verity-bigquery.rb
 
       - name: 🚀 Create Pull Request for Formula Updates
         uses: peter-evans/create-pull-request@v6
