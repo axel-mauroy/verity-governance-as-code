@@ -61,7 +61,6 @@ def update_homebrew_formula(formula_path: Path, binary_name: str, version_str: s
     # replacing URLs or hashes in comments or other unexpected places.
     substitutions = [
         (r'(url\s+").*?(")', f'url "https://github.com/axel-mauroy/verity-governance-as-code/releases/download/v{version_str}/{binary_name}"'),
-        (r'(version\s+").*?(")', f'version "{version_str}"'),
         (r'(sha256\s+").*?(")', f'sha256 "{sha256_hash}"'),
     ]
 
