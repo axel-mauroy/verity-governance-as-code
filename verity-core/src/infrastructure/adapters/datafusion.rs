@@ -11,6 +11,7 @@ use crate::domain::governance::governance_rule::GovernancePolicySet;
 use crate::error::VerityError;
 use crate::infrastructure::adapters::governance_optimizer::GovernanceRule;
 use crate::infrastructure::error::{DatabaseError, InfrastructureError};
+use crate::infrastructure::sql_transpiler::SqlDialectTranspiler;
 use crate::ports::connector::{ColumnSchema, Connector};
 
 use datafusion::arrow::array::Array;
@@ -85,7 +86,8 @@ impl DataFusionConnector {
 #[async_trait]
 impl Connector for DataFusionConnector {
     async fn execute(&self, query: &str) -> Result<(), VerityError> {
-        let df = self.ctx.sql(query).await.map_err(|e| {
+        let transpiled = SqlDialectTranspiler::bigquery_to_datafusion(query);
+        let df = self.ctx.sql(&transpiled).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
         // Collect to trigger execution
@@ -99,7 +101,8 @@ impl Connector for DataFusionConnector {
         &self,
         query: &str,
     ) -> Result<Vec<datafusion::arrow::record_batch::RecordBatch>, VerityError> {
-        let df = self.ctx.sql(query).await.map_err(|e| {
+        let transpiled = SqlDialectTranspiler::bigquery_to_datafusion(query);
+        let df = self.ctx.sql(&transpiled).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
         df.collect().await.map_err(|e| {
@@ -147,11 +150,14 @@ impl Connector for DataFusionConnector {
         sql: &str,
         materialization_type: &str,
     ) -> Result<String, VerityError> {
+        // Transpile from canonical BigQuery dialect to DataFusion-compatible ANSI SQL
+        let transpiled_sql = SqlDialectTranspiler::bigquery_to_datafusion(sql);
+
         match materialization_type {
             "view" => {
                 // CORRECTION: Use DataFrame API to register view programmatically
                 // instead of raw SQL DDL, to avoid double-quoting issues with UniversalQuoter
-                let df = self.ctx.sql(sql).await.map_err(|e| {
+                let df = self.ctx.sql(&transpiled_sql).await.map_err(|e| {
                     VerityError::Infrastructure(InfrastructureError::Database(
                         DatabaseError::DataFusion(e),
                     ))
@@ -168,7 +174,7 @@ impl Connector for DataFusionConnector {
             "table" => {
                 // DataFusion: execute the SQL query, then write results to Parquet
                 // and re-register as a table for downstream models
-                let df = self.ctx.sql(sql).await.map_err(|e| {
+                let df = self.ctx.sql(&transpiled_sql).await.map_err(|e| {
                     VerityError::Infrastructure(InfrastructureError::Database(
                         DatabaseError::DataFusion(e),
                     ))
@@ -218,7 +224,8 @@ impl Connector for DataFusionConnector {
     }
 
     async fn query_scalar(&self, query: &str) -> Result<u64, VerityError> {
-        let df = self.ctx.sql(query).await.map_err(|e| {
+        let transpiled = SqlDialectTranspiler::bigquery_to_datafusion(query);
+        let df = self.ctx.sql(&transpiled).await.map_err(|e| {
             VerityError::Infrastructure(InfrastructureError::Database(DatabaseError::DataFusion(e)))
         })?;
 

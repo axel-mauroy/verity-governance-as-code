@@ -44,7 +44,7 @@ minijinja = { version = "2.0", features = ["loader"] }
 # --- CLI ---
 clap = { version = "4.5.54", features = ["derive", "env"] }
 comfy-table = "7.2.2"
-sqlparser = "0.59"
+sqlparser = { version = "0.59", features = ["visitor"] }
 
 # --- BigQuery & GCP ---
 gcp-bigquery-client = "0.28.0"
