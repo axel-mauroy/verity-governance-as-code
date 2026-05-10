@@ -1,8 +1,8 @@
 class VerityBigquery < Formula
   desc "BigQuery Connector for Verity Governance Engine"
   homepage "https://github.com/axel-mauroy/verity-governance-as-code"
-  url "https://github.com/axel-mauroy/verity-governance-as-code/releases/download/v0.2.8/verity-bigquery-macos-universal"
-  sha256 "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+  url "https://github.com/axel-mauroy/verity-governance-as-code/releases/download/v0.2.9/verity-bigquery-macos-universal"
+  sha256 "9af1a767af88bbd6746d170b5c631bcff12098fb3c038e6a3326ba83e4159551"
 
   depends_on "axel-mauroy/verity-governance-as-code/verity"
 
