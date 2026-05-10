@@ -4,7 +4,7 @@ build-backend = "maturin"
 
 [project]
 name = "verity-core"
-version = "0.2.8"
+version = "0.2.9"
 authors = [
     { name = "Axel MAUROY", email = "axel.mauroy@gmail.com" }
 ]
@@ -24,7 +24,7 @@ dependencies = []
 # When a user runs `uv add "verity-core[bigquery]"`, pip/uv will resolve this extra
 # and download the matching `verity-bigquery` wheel from PyPI, automatically
 # aligning the JSON-RPC versions.
-bigquery = ["verity-bigquery==0.2.8"]
+bigquery = ["verity-bigquery==0.2.9"]
 
 [tool.maturin]
 # This tells Maturin that this project is a purely Rust binary, not a Python extension module.
