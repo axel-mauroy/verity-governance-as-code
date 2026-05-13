@@ -192,7 +192,24 @@ impl CatalogGenerator {
             .with_context(|| format!("Failed to write catalog.json to {:?}", json_path))
             .map_err(|e| VerityError::InternalError(e.to_string()))?;
 
-        // 5. Generate the HTML (Single File App)
+        // 5. Generate the W3C Semantic Graph (JSON-LD)
+        let semantic_graph =
+            crate::domain::governance::semantic::SemanticGraph::from_manifest(manifest);
+        let jsonld_path = target_dir.join("semantic_catalog.jsonld");
+        let jsonld_content = semantic_graph
+            .to_json_string()
+            .context("Failed to serialize semantic graph to JSON-LD")
+            .map_err(|e| VerityError::InternalError(e.to_string()))?;
+        crate::infrastructure::fs::atomic_write(&jsonld_path, &jsonld_content)
+            .with_context(|| {
+                format!(
+                    "Failed to write semantic_catalog.jsonld to {:?}",
+                    jsonld_path
+                )
+            })
+            .map_err(|e| VerityError::InternalError(e.to_string()))?;
+
+        // 6. Generate the HTML (Single File App)
         let html_path = target_dir.join("index.html");
         let html_content = render_html_template(&json_content);
         crate::infrastructure::fs::atomic_write(&html_path, html_content)
@@ -361,4 +378,51 @@ fn render_html_template(json_data: &str) -> String {
     "#,
         json_data = json_data
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::domain::project::{Manifest, ManifestNode, NodeConfig, ResourceType};
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_catalog_generator_all_artifacts() -> anyhow::Result<()> {
+        let temp_dir = tempfile::tempdir()?;
+        let target_dir = temp_dir.path().join("target");
+        std::fs::create_dir_all(&target_dir)?;
+
+        let mut nodes = HashMap::new();
+        nodes.insert(
+            "stg_users".to_string(),
+            ManifestNode {
+                name: "stg_users".to_string(),
+                resource_type: ResourceType::Model,
+                path: "models/stg_users.sql".into(),
+                raw_sql: "SELECT 1".to_string(),
+                config: NodeConfig::default(),
+                columns: vec![],
+                ..Default::default()
+            },
+        );
+
+        let manifest = Manifest {
+            project_name: "test_project".to_string(),
+            nodes,
+            sources: HashMap::new(),
+        };
+
+        CatalogGenerator::generate(temp_dir.path(), &target_dir, &manifest)?;
+
+        assert!(target_dir.join("catalog.json").exists());
+        assert!(target_dir.join("index.html").exists());
+        assert!(target_dir.join("semantic_catalog.jsonld").exists());
+
+        let jsonld_content = std::fs::read_to_string(target_dir.join("semantic_catalog.jsonld"))?;
+        assert!(jsonld_content.contains("@context"));
+        assert!(jsonld_content.contains("verity:stg_users"));
+        assert!(jsonld_content.contains("dcat:Dataset"));
+
+        Ok(())
+    }
 }
