@@ -41,6 +41,17 @@ sa-key.json
 *.jsonl
 
 # ============================
+# Release binaries (uploaded to GitHub Releases by CD, NOT tracked in git)
+# ============================
+release_assets/*
+!release_assets/.gitkeep
+
+# ============================
+# Superpowers Worktrees
+# ============================
+.worktrees/
+
+# ============================
 # IDE & OS
 # ============================
 .vscode/

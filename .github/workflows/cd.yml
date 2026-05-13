@@ -169,6 +169,11 @@ jobs:
           brew audit --strict --new axel-mauroy/verity-governance-as-code/verity
           brew audit --strict --new axel-mauroy/verity-governance-as-code/verity-bigquery
 
+      - name: 🧹 Cleanup downloaded binaries before PR
+        run: |
+          find release_assets/ -type f -not -name "checksums.txt" -delete
+          git status
+
       - name: 🚀 Create Pull Request for Formula Updates
         uses: peter-evans/create-pull-request@v6
         with:
